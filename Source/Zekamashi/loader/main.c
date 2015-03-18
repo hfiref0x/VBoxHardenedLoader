@@ -6,7 +6,7 @@
 *
 *  VERSION:     1.20
 *
-*  DATE:        14 Mar 2015
+*  DATE:        18 Mar 2015
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -318,7 +318,7 @@ BOOL ldrInit(
 	HKEY		hKey = NULL;
 	LRESULT		lRet;
 	LONG		rel = 0;
-	PVOID		scBuffer = NULL, MappedKernel = NULL;
+	PVOID		MappedKernel = NULL;
 	ULONG_PTR	KernelBase = 0L;
 	SIZE_T		ModuleSize;
 
@@ -377,9 +377,13 @@ BOOL ldrInit(
 			g_TsmiPatchDataValue = &TsmiPatchDataValue_4320;
 			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_4320);
 		}
-		if (_strcmpi(szBuffer, TEXT("4.3.22")) == 0) {
-			g_TsmiPatchDataValue = &TsmiPatchDataValue_4322;
-			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_4322);
+		if (
+			(_strcmpi(szBuffer, TEXT("4.3.22")) == 0) ||
+			(_strcmpi(szBuffer, TEXT("4.3.24")) == 0)
+			)	
+		{
+			g_TsmiPatchDataValue = &TsmiPatchDataValue_4322_24;
+			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_4322_24);
 		}
 
 		//
@@ -557,6 +561,7 @@ void ldrMain(
 	DataBuffer = NULL;
 	hDevice = NULL;
 
+	dwCmd = 0;
 	do {
 
 		//
@@ -608,7 +613,6 @@ void ldrMain(
 		//
 		// Check known command.
 		//
-		dwCmd = 0;
 		if (_strcmpi(cmdLineParam, TEXT("-l")) == 0) {
 			dwCmd = TSMI_INSTALL;
 		}
