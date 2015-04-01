@@ -5,9 +5,8 @@ rem EFI/IDE mode
 rem vboxman is the full path to the vboxmanage executable
 rem vmscfgdir is the path to directory that keeps vbox custom configuration data (bioses, tables etc)
 
-set vboxman=%vboxman%
+set vboxman="C:\Program Files\Oracle\VirtualBox\vboxmanage.exe"
 set vmscfgdir=D:\Virtual\VBOX\Settings\
-
 
 %vboxman% setextradata "%1" "VBoxInternal/Devices/efi/0/Config/DmiBIOSVendor" "Apple Inc."
 %vboxman% setextradata "%1" "VBoxInternal/Devices/efi/0/Config/DmiBIOSVersion" "MB52.88Z.0088.B05.0904162222"
