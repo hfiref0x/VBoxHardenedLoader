@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.20
+*  VERSION:     1.22
 *
-*  DATE:        18 Mar 2015
+*  DATE:        15 May 2015
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -384,6 +384,10 @@ BOOL ldrInit(
 		{
 			g_TsmiPatchDataValue = &TsmiPatchDataValue_4322_24;
 			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_4322_24);
+		}
+		if (_strcmpi(szBuffer, TEXT("4.3.26")) == 0) {
+			g_TsmiPatchDataValue = &TsmiPatchDataValue_4326;
+			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_4326);
 		}
 
 		//
