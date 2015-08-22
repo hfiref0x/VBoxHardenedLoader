@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.23
+*  VERSION:     1.24
 *
-*  DATE:        10 July 2015
+*  DATE:        22 Aug 2015
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -393,7 +393,10 @@ BOOL ldrInit(
 			g_TsmiPatchDataValue = &TsmiPatchDataValue_4328;
 			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_4328);
 		}
-
+		if (_strcmpi(szBuffer, TEXT("5.0.0")) == 0) {
+			g_TsmiPatchDataValue = &TsmiPatchDataValue_500;
+			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_500);
+		}
 
 		//
 		// Enumerate loaded drivers.
