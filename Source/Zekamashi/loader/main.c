@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.24
+*  VERSION:     1.25
 *
-*  DATE:        22 Aug 2015
+*  DATE:        08 Nov 2015
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -24,7 +24,15 @@
 #pragma data_seg("shrd")
 volatile LONG g_lApplicationInstances = 0;
 #pragma data_seg()
-#pragma comment(linker, "/Section:shrd,RWS")
+
+#if (_MSC_VER >= 1900) 
+#ifdef _DEBUG
+#pragma comment(lib, "vcruntimed.lib")
+#pragma comment(lib, "ucrtd.lib")
+#else
+#pragma comment(lib, "libvcruntime.lib")
+#endif
+#endif
 
 #define CI_DLL			"CI.DLL"
 
@@ -365,37 +373,13 @@ BOOL ldrInit(
 			break;
 		}
 
-		if (_strcmpi(szBuffer, TEXT("4.3.16")) == 0) {
-			g_TsmiPatchDataValue = &TsmiPatchDataValue_4316;
-			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_4316);
-		}
-		if (_strcmpi(szBuffer, TEXT("4.3.18")) == 0) {
-			g_TsmiPatchDataValue = &TsmiPatchDataValue_4318;
-			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_4318);
-		}
-		if (_strcmpi(szBuffer, TEXT("4.3.20")) == 0) {
-			g_TsmiPatchDataValue = &TsmiPatchDataValue_4320;
-			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_4320);
-		}
-		if (
-			(_strcmpi(szBuffer, TEXT("4.3.22")) == 0) ||
-			(_strcmpi(szBuffer, TEXT("4.3.24")) == 0)
-			)	
-		{
-			g_TsmiPatchDataValue = &TsmiPatchDataValue_4322_24;
-			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_4322_24);
-		}
-		if (_strcmpi(szBuffer, TEXT("4.3.26")) == 0) {
-			g_TsmiPatchDataValue = &TsmiPatchDataValue_4326;
-			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_4326);
-		}
-		if (_strcmpi(szBuffer, TEXT("4.3.28")) == 0) {
-			g_TsmiPatchDataValue = &TsmiPatchDataValue_4328;
-			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_4328);
-		}
 		if (_strcmpi(szBuffer, TEXT("5.0.0")) == 0) {
 			g_TsmiPatchDataValue = &TsmiPatchDataValue_500;
 			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_500);
+		}
+		if (_strcmpi(szBuffer, TEXT("5.0.2")) == 0) {
+			g_TsmiPatchDataValue = &TsmiPatchDataValue_502;
+			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_502);
 		}
 
 		//
@@ -557,14 +541,14 @@ void ldrMain(
 	VOID
 	)
 {
-	BOOL	cond = FALSE;
-	LONG	x;
-	ULONG	l = 0, dwCmd;
-	HANDLE	hDevice;
-	PVOID	DataBuffer;
-	BOOL	bConDisabled, bUsbMonDisabled;
-	WCHAR	cmdLineParam[MAX_PATH + 1];
-	WCHAR	szDriverBuffer[MAX_PATH * 2];
+	BOOL    cond = FALSE;
+	LONG    x;
+	ULONG   l = 0, dwCmd;
+	HANDLE  hDevice;
+	PVOID   DataBuffer;
+	BOOL    bConDisabled, bUsbMonDisabled;
+	WCHAR   cmdLineParam[MAX_PATH + 1];
+	WCHAR   szDriverBuffer[MAX_PATH * 2];
 
 	__security_init_cookie();
 

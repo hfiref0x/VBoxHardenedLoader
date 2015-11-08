@@ -4,9 +4,9 @@
 *
 *  TITLE:       SUP.C
 *
-*  VERSION:     1.20
+*  VERSION:     1.25
 *
-*  DATE:        10 Mar 2015
+*  DATE:        08 Nov 2015
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -312,13 +312,13 @@ HRESULT supNetworkConnectionEnable(
 		if (hResult == S_OK) {
 			do {
 				hResult = pEnumNetConnection->lpVtbl->Next(pEnumNetConnection, INET_CONNECTION_COUNT, &pConn, &ulCount);
-				if (SUCCEEDED(hResult) && ulCount == INET_CONNECTION_COUNT)
+				if ((hResult == S_OK) && (ulCount == INET_CONNECTION_COUNT))
 				{
 					hResult = pConn->lpVtbl->GetProperties(pConn, &pProps);
 					if (hResult == S_OK)
 					{
 						if (_strcmpi(szConnectionName, pProps->pszwName) == 0) {
-							bFound = TRUE;
+							bFound = TRUE; 
 							if (bEnable) {
 								hResultOp = pConn->lpVtbl->Connect(pConn);
 							}
