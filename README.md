@@ -7,8 +7,10 @@ http://www.kernelmode.info/forum/viewtopic.php?f=11&t=3478.
 
 # System Requirements
 
-x64 Windows 7/8/8.1/10
+x64 Windows 7/8/8.1/10;
+
 VirtualBox 5.0 and later versions;
+
 For version below VirtualBox 5.0 use older release of this loader.
 
 Loader designed only for x64 Windows, but can be adapted for x86-32.
