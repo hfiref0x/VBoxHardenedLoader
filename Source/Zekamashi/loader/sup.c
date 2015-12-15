@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2015
+*  (C) COPYRIGHT AUTHORS, 2014 - 2016
 *
 *  TITLE:       SUP.C
 *
-*  VERSION:     1.25
+*  VERSION:     1.26
 *
-*  DATE:        08 Nov 2015
+*  DATE:        15 Dec 2015
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -111,7 +111,7 @@ PVOID supGetSystemInfo(
 	ULONG       memIO;
 
 	do {
-		Buffer = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, Size);
+		Buffer = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (SIZE_T)Size);
 		if (Buffer != NULL) {
 			status = NtQuerySystemInformation(InfoClass, Buffer, Size, &memIO);
 		}
@@ -121,11 +121,11 @@ PVOID supGetSystemInfo(
 		if (status == STATUS_INFO_LENGTH_MISMATCH) {
 			HeapFree(GetProcessHeap(), 0, Buffer);
 			Size *= 2;
-		}
-		c++;
-		if (c > 100) {
-			status = STATUS_SECRET_TOO_LONG;
-			break;
+			c++;
+			if (c > 100) {
+				status = STATUS_SECRET_TOO_LONG;
+				break;
+			}
 		}
 	} while (status == STATUS_INFO_LENGTH_MISMATCH);
 

@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2015
+*  (C) COPYRIGHT AUTHORS, 2014 - 2016
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.25
+*  VERSION:     1.26
 *
-*  DATE:        08 Nov 2015
+*  DATE:        15 Dec 2015
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -380,6 +380,10 @@ BOOL ldrInit(
 		if (_strcmpi(szBuffer, TEXT("5.0.2")) == 0) {
 			g_TsmiPatchDataValue = &TsmiPatchDataValue_502;
 			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_502);
+		}
+		if (_strcmpi(szBuffer, TEXT("5.0.8")) == 0) {
+			g_TsmiPatchDataValue = &TsmiPatchDataValue_508;
+			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_508);
 		}
 
 		//
