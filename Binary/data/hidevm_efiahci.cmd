@@ -49,6 +49,7 @@ set vmscfgdir=D:\Virtual\VBOX\Settings\
 
 %vboxman% setextradata "%1" "VBoxInternal/Devices/acpi/0/Config/AcpiOemId" "APPLE"
 %vboxman% modifyvm "%1" --macaddress1 6CF0491A6E85
+%vboxman% modifyvm "%1" --paravirtprovider legacy
 
 cd /d %vmscfgdir%
 

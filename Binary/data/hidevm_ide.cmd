@@ -48,6 +48,7 @@ set vmscfgdir=D:\Virtual\VBOX\Settings\
 
 %vboxman% setextradata "%1" "VBoxInternal/Devices/acpi/0/Config/AcpiOemId" "ASUS"
 %vboxman% modifyvm "%1" --macaddress1 6CF0491A6E02
+%vboxman% modifyvm "%1" --paravirtprovider legacy
 
 cd /d %vmscfgdir%
 %vboxman% setextradata "%1" "VBoxInternal/Devices/acpi/0/Config/DsdtFilePath" "%vmscfgdir%ACPI-DSDT.bin"
