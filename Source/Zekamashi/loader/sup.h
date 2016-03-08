@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2015
+*  (C) COPYRIGHT AUTHORS, 2014 - 2016
 *
 *  TITLE:       SUP.H
 *
-*  VERSION:     1.20
+*  VERSION:     1.50
 *
-*  DATE:        10 Mar 2015
+*  DATE:        04 Mar 2016
 *
 *  Common header file for the program support routines.
 *
@@ -17,50 +17,19 @@
 *
 *******************************************************************************/
 
-HRESULT supNetworkConnectionEnable(
-	_In_ LPTSTR szConnectionName,
-	_In_ BOOL bEnable
-	);
-
-BOOL supBackupVBoxDrv(
-	_In_ BOOL bRestore
-	);
-
-PVOID supGetSystemInfo(
-	_In_ SYSTEM_INFORMATION_CLASS InfoClass
-	);
-
 BOOL supEnablePrivilege(
 	_In_ DWORD	PrivilegeName,
 	_In_ BOOL	fEnable
-	);
-
-BOOL supProcessExist(
-	_In_ LPWSTR lpProcessName
 	);
 
 VOID supPurgeSystemCache(
 	VOID
 	);
 
-BOOL supGetCommandLineParamA(
-	IN	LPCSTR	CmdLine,
-	IN	ULONG	ParamIndex,
-	OUT	LPSTR	Buffer,
-	IN	ULONG	BufferSize,
-	OUT	PULONG	ParamLen
+PVOID supGetSystemInfo(
+	_In_ SYSTEM_INFORMATION_CLASS InfoClass
 	);
 
-BOOL supGetCommandLineParamW(
-	IN	LPCWSTR	CmdLine,
-	IN	ULONG	ParamIndex,
-	OUT	LPWSTR	Buffer,
-	IN	ULONG	BufferSize,
-	OUT	PULONG	ParamLen
+BOOL supProcessExist(
+	_In_ LPWSTR lpProcessName
 	);
-
-#ifdef _UNICODE
-#define GetCommandLineParam supGetCommandLineParamW
-#else
-#define GetCommandLineParam supGetCommandLineParamA
-#endif

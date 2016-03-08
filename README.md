@@ -9,13 +9,19 @@ http://www.kernelmode.info/forum/viewtopic.php?f=11&t=3478.
 
 x64 Windows 7/8/8.1/10;
 
-VirtualBox 5.0 and later versions (supported 5.0.0, 5.0.2, 5.0.8, 5.0.10, 5.0.12);
+VirtualBox 5.0 and later versions (supported 5.0.0, 5.0.2, 5.0.8, 5.0.10, 5.0.12, 5.0.16);
 
 For version below VirtualBox 5.0 use older release of this loader.
 
 Loader designed only for x64 Windows, but can be adapted for x86-32.
 
 Administrative privilege is required.
+
+
+# Installation and use
+
+See README.txt in Binary folder for more info.
+
 
 # Build 
 

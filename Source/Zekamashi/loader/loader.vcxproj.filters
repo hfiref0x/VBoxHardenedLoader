@@ -18,23 +18,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ldasm.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="sup.c">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="instdrv.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dsefix.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="minirtl\_strcat.c">
-      <Filter>minirtl</Filter>
-    </ClCompile>
-    <ClCompile Include="minirtl\_strcmp.c">
-      <Filter>minirtl</Filter>
     </ClCompile>
     <ClCompile Include="minirtl\_strcmpi.c">
       <Filter>minirtl</Filter>
@@ -42,66 +27,21 @@
     <ClCompile Include="minirtl\_strcpy.c">
       <Filter>minirtl</Filter>
     </ClCompile>
-    <ClCompile Include="minirtl\_strend.c">
-      <Filter>minirtl</Filter>
-    </ClCompile>
-    <ClCompile Include="minirtl\_strlen.c">
-      <Filter>minirtl</Filter>
-    </ClCompile>
-    <ClCompile Include="minirtl\_strncmp.c">
-      <Filter>minirtl</Filter>
-    </ClCompile>
-    <ClCompile Include="minirtl\_strncmpi.c">
-      <Filter>minirtl</Filter>
-    </ClCompile>
-    <ClCompile Include="minirtl\_strncpy.c">
-      <Filter>minirtl</Filter>
-    </ClCompile>
-    <ClCompile Include="minirtl\strtoi.c">
-      <Filter>minirtl</Filter>
-    </ClCompile>
-    <ClCompile Include="minirtl\strtoi64.c">
-      <Filter>minirtl</Filter>
-    </ClCompile>
-    <ClCompile Include="minirtl\strtou64.c">
-      <Filter>minirtl</Filter>
-    </ClCompile>
-    <ClCompile Include="minirtl\u64tohex.c">
-      <Filter>minirtl</Filter>
-    </ClCompile>
-    <ClCompile Include="minirtl\ultostr.c">
-      <Filter>minirtl</Filter>
-    </ClCompile>
     <ClCompile Include="main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="minirtl\cmdline.c">
+      <Filter>minirtl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ldasm.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="vbox.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="vboxdrv.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="tsmidrv.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="dsefix.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="tables.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="sup.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="instdrv.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="minirtl\minirtl.h">
@@ -112,6 +52,9 @@
     </ClInclude>
     <ClInclude Include="ntos.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="minirtl\cmdline.h">
+      <Filter>minirtl</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

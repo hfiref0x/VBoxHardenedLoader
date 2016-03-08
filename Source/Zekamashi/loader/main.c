@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.27
+*  VERSION:     1.50
 *
-*  DATE:        23 Dec 2015
+*  DATE:        06 Mar 2016
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -16,102 +16,51 @@
 *******************************************************************************/
 
 #include "global.h"
-#include "tsmidrv.h"
-#include "dsefix.h"
 #include "tables.h"
 #include <process.h>
 
 #pragma data_seg("shrd")
-volatile LONG g_lApplicationInstances = 0;
+volatile LONG           g_lApplicationInstances = 0;
 #pragma data_seg()
 
-#if (_MSC_VER >= 1900) 
-#ifdef _DEBUG
-#pragma comment(lib, "vcruntimed.lib")
-#pragma comment(lib, "ucrtd.lib")
-#else
-#pragma comment(lib, "libvcruntime.lib")
-#endif
-#endif
+#define TsmiParamsKey   L"Parameters"
+#define TsmiPatchData   L"PatchData"
+#define T_PROGRAMTITLE  L"VBoxLoader"
 
-#define CI_DLL			"CI.DLL"
-
-#define TsmiParamsKey	L"Parameters"
-#define TsmiPatchData	L"PatchData"
-#define TsmiDrvName     L"Tsugumi"
-#define VBoxUsbMon		L"VBoxUSBMon"
-
-#define VBoxNetConnect	L"VirtualBox Host-Only Network"
-#define T_PROGRAMTITLE	L"VBoxLoader"
-
-#define TSMI_INSTALL 0x00000001
-#define TSMI_REMOVE  0x00000002
-
-/*
-**  Disable DSE (Vista and above)
-**  xor rax, rax
-**  ret
-*/
-const unsigned char scDisable[] = {
-	0x48, 0x31, 0xc0, 0xc3
-};
-
-/*
-**  Enable DSE (W8 and above)
-**  xor rax, rax
-**  mov al, 6
-**  ret
-*/
-const unsigned char scEnable8Plus[] = {
-	0x48, 0x31, 0xc0, 0xb0, 0x06, 0xc3
-};
-
-/*
-**  Enable DSE (Vista and Seven)
-**  xor rax, rax
-**  mov al, 1
-**  ret
-*/
-const unsigned char scEnableVista7[] = {
-	0x48, 0x31, 0xc0, 0xb0, 0x01, 0xc3
-};
-
-//
-// Global OS version variable.
-//
-ULONG					g_TsmiPatchDataValueSize;
-PVOID					g_TsmiPatchDataValue;
-
-ULONG_PTR				g_CiVariable = 0L;
-
-RTL_OSVERSIONINFOEXW	g_osv;
+ULONG                   g_TsmiPatchDataValueSize;
+PVOID                   g_TsmiPatchDataValue;
 
 //
 // Help output.
 //
-#define T_HELP	L"VirtualBox Hardened Loader v1.2.6000\n\n\r\
-loader [-l || -u] [CustomPatchTable]\n\r\
-[-l] Install monitoring driver.\n\r\
-[-u] Uninstall monitoring driver and purge system cache.\n\r\
-[CustomPatchTable] Optional second paramter - table filename with full path.\n\n\r\
-Examples:\n\r\
-c:\\vbox\\ldr.exe -l\n\r\
-c:\\vbox\\ldr.exe -u\n\r\
-c:\\vbox\\ldr.exe -l c:\\vbox\\mydata.bin"
+#define T_HELP	L"VirtualBox Hardened Loader v1.5.6000\n\n\r\
+loader [CustomPatchTable]\n\r\
+[CustomPatchTable] Optional parameter - table filename with full path.\n\n\r\
+Example: ldr.exe mydata.bin"
+
+#define MAXIMUM_SUPPORTED_VERSIONS 6
+TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
+    { L"5.0.0", TsmiPatchDataValue_500, sizeof(TsmiPatchDataValue_500) },
+    { L"5.0.2", TsmiPatchDataValue_502, sizeof(TsmiPatchDataValue_502) },
+    { L"5.0.8", TsmiPatchDataValue_508, sizeof(TsmiPatchDataValue_508) },
+    { L"5.0.10", TsmiPatchDataValue_5010, sizeof(TsmiPatchDataValue_5010) },
+    { L"5.0.12", TsmiPatchDataValue_5012, sizeof(TsmiPatchDataValue_5012) },
+    { L"5.0.16", TsmiPatchDataValue_5016, sizeof(TsmiPatchDataValue_5016) }
+};
 
 /*
-* ldrSetTsmiParams
+* SetTsmiParams
 *
 * Purpose:
 *
 * Set patch chains data to the registry.
 *
 */
-VOID ldrSetTsmiParams(
+BOOL SetTsmiParams(
 	VOID
 	)
 {
-	BOOL cond = FALSE;
+	BOOL cond = FALSE, bResult = FALSE;
 	HKEY hRootKey, hParamsKey;
 	LRESULT lRet;
 
@@ -119,8 +68,9 @@ VOID ldrSetTsmiParams(
 	hParamsKey = NULL;
 
 	do {
-		lRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"System\\CurrentControlSet\\Services\\tsugumi",
-			0, KEY_ALL_ACCESS, &hRootKey);
+
+		lRet = RegCreateKeyEx(HKEY_LOCAL_MACHINE, L"System\\CurrentControlSet\\Services\\Tsugumi", 0, NULL, 0, KEY_ALL_ACCESS,
+			NULL, &hRootKey, NULL);
 
 		if ((lRet != ERROR_SUCCESS) || (hRootKey == NULL)) {
 			break;
@@ -131,8 +81,10 @@ VOID ldrSetTsmiParams(
 			break;
 		}
 
-		RegSetValueEx(hParamsKey, TsmiPatchData, 0, REG_BINARY, 
+		lRet = RegSetValueEx(hParamsKey, TsmiPatchData, 0, REG_BINARY, 
 			(LPBYTE)g_TsmiPatchDataValue, g_TsmiPatchDataValueSize);
+
+        bResult = (lRet == ERROR_SUCCESS);
 
 	} while (cond);
 
@@ -142,83 +94,12 @@ VOID ldrSetTsmiParams(
 	if (hParamsKey) {
 		RegCloseKey(hParamsKey);
 	}
+
+    return bResult;
 }
 
 /*
-* ldrSetMonitor
-*
-* Purpose:
-*
-* Install Tsugumi monitoring driver.
-*
-*/
-BOOL ldrSetMonitor(
-	VOID
-	)
-{
-	BOOL		bResult;
-	SC_HANDLE	schSCManager;
-	HANDLE		hFile;
-	DWORD		bytesIO;
-	WCHAR		szDriverBuffer[MAX_PATH * 2];
-
-	bResult = FALSE;
-
-	//
-	// Combine full path name for our driver.
-	//
-	RtlSecureZeroMemory(szDriverBuffer, MAX_PATH * 2);
-	if (!GetSystemDirectory(szDriverBuffer, MAX_PATH)) {
-		return bResult;
-	}
-	_strcat(szDriverBuffer, TEXT("\\drivers\\tsugumi.sys"));
-
-	//
-	// Drop our driver file to the disk.
-	//
-	hFile = CreateFile(szDriverBuffer, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
-	if (hFile == INVALID_HANDLE_VALUE) {
-		return bResult;
-	}
-	bytesIO = 0;
-	WriteFile(hFile, TsmiData, sizeof(TsmiData), &bytesIO, NULL);
-	CloseHandle(hFile);
-
-	//
-	// Check if file dropped OK.
-	//
-	if (bytesIO != sizeof(TsmiData)) {
-		return bResult;
-	}
-
-	//
-	// Load Tsugumi device driver.
-	//
-	schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-	if (schSCManager) {
-
-		// Unload any previous versions.
-		scmStopDriver(schSCManager, TsmiDrvName);
-		scmRemoveDriver(schSCManager, TsmiDrvName);
-
-		// Install and run monitor driver.
-		if (scmInstallDriver(schSCManager, TsmiDrvName, szDriverBuffer)) {
-			ldrSetTsmiParams();
-			bResult = scmStartDriver(schSCManager, TsmiDrvName);
-		}
-
-		CloseServiceHandle(schSCManager);
-	}
-
-	//
-	// Driver file is no longer needed.
-	//
-	DeleteFile(szDriverBuffer);
-	return bResult;
-}
-
-/*
-* ldrFetchCustomPatchData
+* FetchCustomPatchData
 *
 * Purpose:
 *
@@ -226,7 +107,7 @@ BOOL ldrSetMonitor(
 * Returned buffer must be freed with HeapFree after usage.
 *
 */
-PVOID ldrFetchCustomPatchData(
+PVOID FetchCustomPatchData(
 	_In_ LPWSTR lpFileName,
 	_Inout_opt_ PDWORD pdwPatchDataSize
 	)
@@ -273,71 +154,31 @@ PVOID ldrFetchCustomPatchData(
 }
 
 /*
-* ldrGetSC
+* SelectPatchTable
 *
 * Purpose:
 *
-* Select OS dependent shellcode.
+* Select patch table depending on installed VBox version.
 *
 */
-PVOID ldrGetSC(
-	BOOL bDisable
+VOID SelectPatchTable(
+	VOID
 	)
 {
-	PVOID scBuffer = NULL;
+	BOOL     cond = FALSE;
+	DWORD    dwSize;
+	HKEY     hKey = NULL;
+	LRESULT  lRet;
+    INT      i;
 
-	//
-	// Select shellcode buffer.
-	//
-	if (bDisable) {
-		scBuffer = (PVOID)scDisable;
-	}
-	else {
-
-		//Shellcode for for 8/10+
-		scBuffer = (PVOID)scEnable8Plus;
-
-		if (g_osv.dwMajorVersion == 6) {
-
-			//Shellcode for vista, 7
-			if (g_osv.dwMinorVersion < 2) {
-				scBuffer = (PVOID)scEnableVista7;
-			}
-		}
-	}
-	return scBuffer;
-}
-
-/*
-* ldrInit
-*
-* Purpose:
-*
-* Initialize loader global variables.
-*
-*/
-BOOL ldrInit(
-	DWORD ldrCommand
-	)
-{
-	BOOL		bResult = FALSE, bFound = FALSE, cond = FALSE;
-	DWORD		dwSize;
-	ULONG		rl = 0, c;
-	HKEY		hKey = NULL;
-	LRESULT		lRet;
-	LONG		rel = 0;
-	PVOID		MappedKernel = NULL;
-	ULONG_PTR	KernelBase = 0L;
-	SIZE_T		ModuleSize;
-
-	PLIST_ENTRY				Head, Next;
-	PLDR_DATA_TABLE_ENTRY	Entry;
-	PRTL_PROCESS_MODULES	miSpace = NULL;
-
-	CHAR	KernelFullPathName[MAX_PATH * 2];
 	TCHAR	szBuffer[MAX_PATH + 1];
 
 	do {
+		//
+		// Select default patch table.
+		//
+		g_TsmiPatchDataValue = TsmiPatchDataValue_5016;
+		g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_5016);
 
 		lRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("Software\\Oracle\\VirtualBox"), 
 			0, KEY_READ, &hKey);
@@ -350,20 +191,6 @@ BOOL ldrInit(
 		}
 
 		//
-		// If we are not in install mode - leave here.
-		//
-		if (ldrCommand != TSMI_INSTALL) {
-			bResult = TRUE;
-			break;
-		}
-
-		//
-		// Select default patch table.
-		//
-		g_TsmiPatchDataValue = TsmiPatchDataValue;
-		g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue);
-
-		//
 		// Read VBox version and select proper table.
 		//
 		RtlSecureZeroMemory(&szBuffer, sizeof(szBuffer));
@@ -373,168 +200,19 @@ BOOL ldrInit(
 			break;
 		}
 
-		if (_strcmpi(szBuffer, TEXT("5.0.0")) == 0) {
-			g_TsmiPatchDataValue = &TsmiPatchDataValue_500;
-			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_500);
-		}
-		if (_strcmpi(szBuffer, TEXT("5.0.2")) == 0) {
-			g_TsmiPatchDataValue = &TsmiPatchDataValue_502;
-			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_502);
-		}
-		if (_strcmpi(szBuffer, TEXT("5.0.8")) == 0) {
-			g_TsmiPatchDataValue = &TsmiPatchDataValue_508;
-			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_508);
-		}
-		if (_strcmpi(szBuffer, TEXT("5.0.10")) == 0) {
-			g_TsmiPatchDataValue = &TsmiPatchDataValue_5010;
-			g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_5010);
-		}
-
-		//
-		// Enumerate loaded drivers.
-		//
-		miSpace = supGetSystemInfo(SystemModuleInformation);
-		if (miSpace == NULL) {
-			break;
-		}
-		if (miSpace->NumberOfModules == 0) {
-			break;
-		}
-
-		//
-		// Query system32 folder.
-		//
-		RtlSecureZeroMemory(KernelFullPathName, sizeof(KernelFullPathName));
-		rl = GetSystemDirectoryA(KernelFullPathName, MAX_PATH);
-		if (rl == 0) {
-			break;
-		}
-		KernelFullPathName[rl] = (CHAR)'\\';
-
-		//
-		// For vista/7 find ntoskrnl.exe
-		//
-		bFound = FALSE;
-		if (g_osv.dwMajorVersion == 6) {
-			if (g_osv.dwMinorVersion < 2) {
-
-				_strcpy_a(&KernelFullPathName[rl + 1],
-					(const char*)&miSpace->Modules[0].FullPathName[miSpace->Modules[0].OffsetToFileName]);
-
-				KernelBase = (ULONG_PTR)miSpace->Modules[0].ImageBase;
-				bFound = TRUE;
-			}
-		}
-		//
-		// For 8+, 10 find CI.DLL
-		//
-		if (bFound == FALSE) {
-			_strcpy_a(&KernelFullPathName[rl + 1], CI_DLL);
-			for (c = 0; c < miSpace->NumberOfModules; c++)
-				if (_strcmpi_a((const char *)&miSpace->Modules[c].FullPathName[miSpace->Modules[c].OffsetToFileName],
-					CI_DLL) == 0)
-				{
-					KernelBase = (ULONG_PTR)miSpace->Modules[c].ImageBase;
-					break;
-				}
-		}
-
-		HeapFree(GetProcessHeap(), 0, miSpace);
-		miSpace = NULL;
-
-		//
-		// Map ntoskrnl/CI.DLL in our address space.
-		//
-		MappedKernel = LoadLibraryExA(KernelFullPathName, NULL, DONT_RESOLVE_DLL_REFERENCES);
-		if (MappedKernel == NULL) {
-			break;
-		}
-
-		if (g_osv.dwMajorVersion == 6) {
-
-			// Find g_CiEnabled Vista, Seven
-			if (g_osv.dwMinorVersion < 2) {
-
-				// Query module size via PEB loader for bruteforce.
-				ModuleSize = 0;
-				EnterCriticalSection((PRTL_CRITICAL_SECTION)NtCurrentPeb()->LoaderLock);
-				Head = &NtCurrentPeb()->Ldr->InLoadOrderModuleList;
-				Next = Head->Flink;
-				while (Next != Head) {
-					Entry = CONTAINING_RECORD(Next, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
-					if (Entry->DllBase == MappedKernel) {
-						ModuleSize = Entry->SizeOfImage;
-						break;
-					}
-					Next = Next->Flink;
-				}
-				LeaveCriticalSection((PRTL_CRITICAL_SECTION)NtCurrentPeb()->LoaderLock);
-
-				// Module not found, abort.
-				if (ModuleSize == 0) {
-					break;
-				}
-				rel = dsfQueryCiEnabled(&KernelBase, MappedKernel, (DWORD)ModuleSize);
-			}
-			else {
-
-				// Find g_CiOptions w8+ 
-				rel = dsfQueryCiOptions(&KernelBase, MappedKernel);
-			}
-		}
-		else {
-
-			// Otherwise > NT6.x, find g_CiOptions 10+
-			rel = dsfQueryCiOptions(&KernelBase, MappedKernel);
-		}
-
-		if (rel == 0)
-			break;
-
-		g_CiVariable = KernelBase;
-
-		bResult = TRUE;
+        for (i = 0; i < MAXIMUM_SUPPORTED_VERSIONS; i++) {
+            if (_strcmpi(g_Tables[i].lpDescription, szBuffer) == 0) {
+                g_TsmiPatchDataValue = g_Tables[i].TablePointer;
+                g_TsmiPatchDataValueSize = g_Tables[i].TableSize;
+                break;
+            }
+        }
 
 	} while (cond);
 
 	if (hKey) {
 		RegCloseKey(hKey);
 	}
-	if (miSpace != NULL) {
-		HeapFree(GetProcessHeap(), 0, miSpace);
-	}
-	if (MappedKernel != NULL) {
-		FreeLibrary(MappedKernel);
-	}
-
-	return bResult;
-}
-
-/*
-* ldrPatchDSE
-*
-* Purpose:
-*
-* Manipulate DSE state.
-*
-*/
-BOOL ldrPatchDSE(
-	HANDLE hDevice, 
-	BOOL bDisable
-	)
-{
-	PVOID scBuffer;
-
-	if ((hDevice == NULL) || (g_CiVariable == 0L)) {
-		return FALSE;
-	}
-
-	scBuffer = ldrGetSC(bDisable);
-	if (scBuffer == NULL) {
-		return FALSE;
-	}
-
-	return dsfControlDSE(hDevice, g_CiVariable, scBuffer);
 }
 
 /*
@@ -545,44 +223,22 @@ BOOL ldrPatchDSE(
 * Program entry point.
 *
 */
-void ldrMain(
+void VBoxLdrMain(
 	VOID
 	)
 {
 	BOOL    cond = FALSE;
 	LONG    x;
-	ULONG   l = 0, dwCmd;
-	HANDLE  hDevice;
+	ULONG   l = 0;
 	PVOID   DataBuffer;
-	BOOL    bConDisabled, bUsbMonDisabled;
-	WCHAR   cmdLineParam[MAX_PATH + 1];
-	WCHAR   szDriverBuffer[MAX_PATH * 2];
+	HANDLE  hDevice;
+	WCHAR   szBuffer[MAX_PATH + 1];
 
 	__security_init_cookie();
 
-	bConDisabled = FALSE;
-	bUsbMonDisabled = FALSE;
 	DataBuffer = NULL;
-	hDevice = NULL;
 
-	dwCmd = 0;
 	do {
-
-		//
-		// Check OS version.
-		//
-		RtlSecureZeroMemory(&g_osv, sizeof(g_osv));
-		g_osv.dwOSVersionInfoSize = sizeof(g_osv);
-		RtlGetVersion((PRTL_OSVERSIONINFOW)&g_osv);
-
-		//
-		// We support only Vista based OS.
-		//
-		if (g_osv.dwMajorVersion < 6) {
-			MessageBox(GetDesktopWindow(), TEXT("Unsupported OS."),
-				T_PROGRAMTITLE, MB_ICONINFORMATION);
-			break;
-		}
 
 		//
 		// Check number of instances running.
@@ -593,6 +249,21 @@ void ldrMain(
 		}
 
 		//
+		// Check OS version.
+		//
+		RtlGetNtVersionNumbers(&l, NULL, NULL);
+
+		//
+		// We support only Vista based OS.
+		//
+		if (l < 6) {
+			MessageBox(GetDesktopWindow(), TEXT("Unsupported OS."),
+				T_PROGRAMTITLE, MB_ICONINFORMATION);
+			break;
+		}
+
+#ifndef _DEBUG
+		//
 		// Check if any VBox instances are running, they must be closed before our usage.
 		//
 		if (supProcessExist(L"VirtualBox.exe")) {
@@ -600,160 +271,52 @@ void ldrMain(
 				T_PROGRAMTITLE, MB_ICONINFORMATION);
 			break;
 		}
+#endif
+		SelectPatchTable();
 
-		//
-		// Query command line.
-		//
-		RtlSecureZeroMemory(cmdLineParam, sizeof(cmdLineParam));
-		GetCommandLineParam(GetCommandLine(), 1, cmdLineParam, MAX_PATH, &l);
-		if (l == 0) {
-			//
-			// Nothing in command line, simple display help and leave.
-			//
-			MessageBox(GetDesktopWindow(), T_HELP, T_PROGRAMTITLE, MB_ICONINFORMATION);
-			break;
-		}
-
-		//
-		// Check known command.
-		//
-		if (_strcmpi(cmdLineParam, TEXT("-l")) == 0) {
-			dwCmd = TSMI_INSTALL;
-		}
-		else {
-			if (_strcmpi(cmdLineParam, TEXT("-u")) == 0) {
-				dwCmd = TSMI_REMOVE;
+		// Load custom patch table, if present.
+		RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
+		GetCommandLineParam(GetCommandLine(), 1, szBuffer, MAX_PATH, &l);
+		if (l > 0) {
+			l = 0;
+			DataBuffer = FetchCustomPatchData(szBuffer, &l);
+			if ((DataBuffer != NULL) && (l > 0)) {
+				g_TsmiPatchDataValue = DataBuffer;
+				g_TsmiPatchDataValueSize = l;
 			}
 		}
-		if (dwCmd == 0) {
-			MessageBox(GetDesktopWindow(), T_HELP, T_PROGRAMTITLE, MB_ICONINFORMATION);
-			break;
+
+        if (!SetTsmiParams()) {
+            MessageBox(GetDesktopWindow(), TEXT("Cannot write Tsugumi settings."), 
+                T_PROGRAMTITLE, MB_ICONERROR);
+            break;
+        }
+
+		// Open Tsugumi instance
+		hDevice = NULL;
+		_strcpy(szBuffer, TSUGUMI_SYM_LINK);
+		hDevice = CreateFile(szBuffer,
+			GENERIC_READ | GENERIC_WRITE,
+			0, NULL,
+			OPEN_EXISTING,
+			FILE_ATTRIBUTE_NORMAL,
+			NULL
+			);
+
+		if (hDevice != INVALID_HANDLE_VALUE) {
+			DeviceIoControl(hDevice, TSUGUMI_IOCTL_REFRESH_LIST, NULL, 0, NULL, 0, &l, NULL);
+			CloseHandle(hDevice);
+
+			//force windows rebuild image cache
+			supPurgeSystemCache();
 		}
-
-		//
-		// Init ldr and DSEFix.
-		//
-		if (!ldrInit(dwCmd)) {
-			break;
-		}
-
-		//
-		// Process command.
-		//
-		switch (dwCmd) {
-			
-			case TSMI_INSTALL:
-
-				// Backup vboxdrv if exists.
-				supBackupVBoxDrv(FALSE);
-
-				// Stop VBox Networking and USB driver.
-				bConDisabled = (SUCCEEDED(supNetworkConnectionEnable(VBoxNetConnect, FALSE)));
-				bUsbMonDisabled = dsfStopDriver(VBoxUsbMon);
-				dsfStopDriver(VBoxDrvSvc);
-
-				// Load vulnerable VBoxDrv, disable VBox Network if exist.
-				RtlSecureZeroMemory(szDriverBuffer, sizeof(szDriverBuffer));
-				if (GetSystemDirectory(szDriverBuffer, MAX_PATH) == 0) {
-					MessageBox(GetDesktopWindow(), TEXT("Cannot find System32 directory."),
-						NULL, MB_ICONINFORMATION);
-					break;
-				}
-				_strcat(szDriverBuffer, TEXT("\\drivers\\VBoxDrv.sys"));
-				hDevice = dsfLoadVulnerableDriver(szDriverBuffer);
-				if (hDevice) {
-
-					//
-					// Disable DSE so we can load monitor.
-					// Device handle closed by DSEFix routine.
-					//
-					if (ldrPatchDSE(hDevice, TRUE)) {
-
-						// Stop our VBoxDrv, need reloading for 2nd usage.
-						dsfStopDriver(VBoxDrvSvc);
-
-						// Load custom patch table, if present.
-						RtlSecureZeroMemory(cmdLineParam, sizeof(cmdLineParam));
-						GetCommandLineParam(GetCommandLine(), 2, cmdLineParam, MAX_PATH, &l);
-						if (l > 0) {
-							l = 0;
-							DataBuffer = ldrFetchCustomPatchData(cmdLineParam, &l);
-							if ((DataBuffer != NULL) && (l > 0)) {
-								g_TsmiPatchDataValue = DataBuffer;
-								g_TsmiPatchDataValueSize = l;
-							}
-						}
-
-						// Install and run monitor.
-						if (!ldrSetMonitor()) {
-							MessageBox(GetDesktopWindow(),
-								TEXT("Error loading Tsugumi"), NULL, MB_ICONERROR);
-						}
-
-						// Enable DSE back.
-						hDevice = NULL;
-						if (dsfStartDriver(VBoxDrvSvc, &hDevice)) {
-							ldrPatchDSE(hDevice, FALSE);
-						}
-
-					}
-					else { //ldrPatchDSE failure case
-
-						// Unknown error during DSE disabling attempt.
-						MessageBox(GetDesktopWindow(),
-							TEXT("Error disabling DSE"), NULL, MB_ICONERROR);
-					}
-
-					// Finally, remove our vboxdrv file and restore backup.
-					dsfStopDriver(VBoxDrvSvc);
-					DeleteFile(szDriverBuffer);
-					supBackupVBoxDrv(TRUE);
-
-					// Restart installed VBoxDrv.
-					dsfStartDriver(VBoxDrvSvc, NULL);
-
-				}
-				else { //dsfLoadVulnerableDriver failure case.
-
-					// Load error, show error message and restore backup.
-					supBackupVBoxDrv(TRUE);
-					MessageBox(GetDesktopWindow(),
-						TEXT("Error loading VBoxDrv"), NULL, MB_ICONERROR);
-				}	
-				break;
-				
-			//
-			// Remove command, unload our driver and purge file/memory list cache.
-			//
-			case TSMI_REMOVE:
-				scmUnloadDeviceDriver(TsmiDrvName);
-				supPurgeSystemCache();
-				break;
-
+		else {
+			MessageBox(GetDesktopWindow(), TEXT("Cannot open Tsugumi device."),
+				T_PROGRAMTITLE, MB_ICONERROR);
 		}
 
 	} while (cond);
 
-	//
-	// Cleanup after install.
-	//
-	if (dwCmd == TSMI_INSTALL) {
-
-		// Re-enable VBox Network, UsbMonitor if they're disabled.
-		if (bConDisabled) {
-			supNetworkConnectionEnable(VBoxNetConnect, TRUE);
-		}
-		if (bUsbMonDisabled) {
-			dsfStartDriver(VBoxUsbMon, NULL);
-		}
-
-		// Free memory allocated for custom patch table.
-		if (DataBuffer != NULL) {
-			HeapFree(GetProcessHeap(), 0, DataBuffer);
-		}
-	}
-
 	InterlockedDecrement((PLONG)&g_lApplicationInstances);
 	ExitProcess(0);
-	return;
 }

@@ -4,9 +4,9 @@
 *
 *  TITLE:       SUP.C
 *
-*  VERSION:     1.26
+*  VERSION:     1.50
 *
-*  DATE:        15 Dec 2015
+*  DATE:        04 Mar 2016
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -15,14 +15,6 @@
 *
 *******************************************************************************/
 #include "global.h"
-#include <Shlwapi.h>
-#include <ShlObj.h>
-#include <netcon.h>
-
-#define INET_CONNECTION_COUNT 1
-
-//include for PathFileExists API
-#pragma comment(lib, "shlwapi.lib")
 
 /*
 * supPurgeSystemCache
@@ -52,6 +44,49 @@ VOID supPurgeSystemCache(
 		smlc = MemoryPurgeStandbyList;
 		NtSetSystemInformation(SystemMemoryListInformation, &smlc, sizeof(smlc));
 	}
+}
+
+/*
+* supEnablePrivilege
+*
+* Purpose:
+*
+* Enable/Disable given privilege.
+*
+* Return FALSE on any error.
+*
+*/
+BOOL supEnablePrivilege(
+	_In_ DWORD	PrivilegeName,
+	_In_ BOOL	fEnable
+	)
+{
+	BOOL bResult = FALSE;
+	NTSTATUS status;
+	HANDLE hToken;
+	TOKEN_PRIVILEGES TokenPrivileges;
+
+	status = NtOpenProcessToken(
+		GetCurrentProcess(),
+		TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
+		&hToken);
+
+	if (!NT_SUCCESS(status)) {
+		return bResult;
+	}
+
+	TokenPrivileges.PrivilegeCount = 1;
+	TokenPrivileges.Privileges[0].Luid.LowPart = PrivilegeName;
+	TokenPrivileges.Privileges[0].Luid.HighPart = 0;
+	TokenPrivileges.Privileges[0].Attributes = (fEnable) ? SE_PRIVILEGE_ENABLED : 0;
+	status = NtAdjustPrivilegesToken(hToken, FALSE, &TokenPrivileges,
+		sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, NULL);
+	if (status == STATUS_NOT_ALL_ASSIGNED) {
+		status = STATUS_PRIVILEGE_NOT_HELD;
+	}
+	bResult = NT_SUCCESS(status);
+	NtClose(hToken);
+	return bResult;
 }
 
 
@@ -140,98 +175,6 @@ PVOID supGetSystemInfo(
 }
 
 /*
-* supBackupVBoxDrv
-*
-* Purpose:
-*
-* Backup virtualbox driver file if it already installed.
-* When bRestore is TRUE return value indicate if VBox driver 
-* was already installed in system.
-*
-*/
-BOOL supBackupVBoxDrv(
-	_In_ BOOL bRestore
-	)
-{
-	BOOL bResult = FALSE;
-	WCHAR szOldDriverName[MAX_PATH * 2];
-	WCHAR szNewDriverName[MAX_PATH * 2];
-	WCHAR szDriverDirName[MAX_PATH * 2];
-
-	if (!GetSystemDirectory(szDriverDirName, MAX_PATH)) {
-		return FALSE;
-	}
-	_strcat(szDriverDirName, TEXT("\\drivers\\"));
-
-	if (bRestore) {
-		_strcpy(szOldDriverName, szDriverDirName);
-		_strcat(szOldDriverName, TEXT("VBoxDrv.backup"));
-		if (PathFileExists(szOldDriverName)) {
-			_strcpy(szNewDriverName, szDriverDirName);
-			_strcat(szNewDriverName, TEXT("VBoxDrv.sys"));
-			bResult = MoveFileEx(szOldDriverName, szNewDriverName,
-				MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
-		}
-	}
-	else {
-		_strcpy(szOldDriverName, szDriverDirName);
-		_strcat(szOldDriverName, TEXT("VBoxDrv.sys"));
-
-		bResult = PathFileExists(szOldDriverName);
-		if (bResult) {
-			_strcpy(szNewDriverName, szDriverDirName);
-			_strcat(szNewDriverName, TEXT("VBoxDrv.backup"));
-			MoveFileEx(szOldDriverName, szNewDriverName,
-				MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
-		}
-	}
-	return bResult;
-}
-
-/*
-* supEnablePrivilege
-*
-* Purpose:
-*
-* Enable/Disable given privilege.
-*
-* Return FALSE on any error.
-*
-*/
-BOOL supEnablePrivilege(
-	_In_ DWORD	PrivilegeName,
-	_In_ BOOL	fEnable
-	)
-{
-	BOOL bResult = FALSE;
-	NTSTATUS status;
-	HANDLE hToken;
-	TOKEN_PRIVILEGES TokenPrivileges;
-
-	status = NtOpenProcessToken(
-		GetCurrentProcess(),
-		TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
-		&hToken);
-
-	if (!NT_SUCCESS(status)) {
-		return bResult;
-	}
-
-	TokenPrivileges.PrivilegeCount = 1;
-	TokenPrivileges.Privileges[0].Luid.LowPart = PrivilegeName;
-	TokenPrivileges.Privileges[0].Luid.HighPart = 0;
-	TokenPrivileges.Privileges[0].Attributes = (fEnable) ? SE_PRIVILEGE_ENABLED : 0;
-	status = NtAdjustPrivilegesToken(hToken, FALSE, &TokenPrivileges,
-		sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, NULL);
-	if (status == STATUS_NOT_ALL_ASSIGNED) {
-		status = STATUS_PRIVILEGE_NOT_HELD;
-	}
-	bResult = NT_SUCCESS(status);
-	NtClose(hToken);
-	return bResult;
-}
-
-/*
 * supProcessExist
 *
 * Purpose:
@@ -275,227 +218,4 @@ BOOL supProcessExist(
 		HeapFree(GetProcessHeap(), 0, ProcessList);
 	}
 	return bResult;
-}
-
-/*
-* supNetworkConnectionEnable
-*
-* Purpose:
-*
-* Enable/Disable given network connection.
-*
-*/
-HRESULT supNetworkConnectionEnable(
-	_In_ LPTSTR szConnectionName,
-	_In_ BOOL bEnable
-	)
-{
-	HRESULT hResult = E_FAIL, hResultOp = E_FAIL;
-	INetConnectionManager *pNetConnectionManager = NULL;
-	IEnumNetConnection *pEnumNetConnection;
-	ULONG ulCount = 0;
-	BOOL bFound = FALSE;
-	NETCON_PROPERTIES* pProps = NULL;
-	INetConnection* pConn = NULL;
-
-	hResult = CoInitialize(NULL);
-	if (FAILED(hResult)) {
-		return hResult;
-	}
-
-	hResult = CoCreateInstance(&CLSID_ConnectionManager, NULL,
-		CLSCTX_LOCAL_SERVER | CLSCTX_NO_CODE_DOWNLOAD, &IID_INetConnectionManager,
-		(LPVOID *)&pNetConnectionManager);
-
-	if (SUCCEEDED(hResult)) {
-		hResult = pNetConnectionManager->lpVtbl->EnumConnections(pNetConnectionManager, NCME_DEFAULT, &pEnumNetConnection);
-		if (hResult == S_OK) {
-			do {
-				hResult = pEnumNetConnection->lpVtbl->Next(pEnumNetConnection, INET_CONNECTION_COUNT, &pConn, &ulCount);
-				if ((hResult == S_OK) && (ulCount == INET_CONNECTION_COUNT))
-				{
-					hResult = pConn->lpVtbl->GetProperties(pConn, &pProps);
-					if (hResult == S_OK)
-					{
-						if (_strcmpi(szConnectionName, pProps->pszwName) == 0) {
-							bFound = TRUE; 
-							if (bEnable) {
-								hResultOp = pConn->lpVtbl->Connect(pConn);
-							}
-							else {
-								hResultOp = pConn->lpVtbl->Disconnect(pConn);
-							}
-							if (FAILED(hResultOp)) hResult = hResultOp;
-						}
-						CoTaskMemFree(pProps->pszwName);
-						CoTaskMemFree(pProps->pszwDeviceName);
-						CoTaskMemFree(pProps);
-					}
-					pConn->lpVtbl->Release(pConn);
-					pConn = NULL;
-				}
-			} while (SUCCEEDED(hResult) && (ulCount == INET_CONNECTION_COUNT) && !bFound);
-			pEnumNetConnection->lpVtbl->Release(pEnumNetConnection);
-		}
-		pNetConnectionManager->lpVtbl->Release(pNetConnectionManager);
-	}
-	CoUninitialize();
-
-	return hResult;
-}
-
-/*
-* supGetCommandLineParamA
-*
-* Purpose:
-*
-* Query token from command line.
-*
-* Return value: TRUE on success, FALSE otherwise
-*
-* Remark: ANSI variant
-*
-*/
-BOOL supGetCommandLineParamA(
-	IN	LPCSTR	CmdLine,
-	IN	ULONG	ParamIndex,
-	OUT	LPSTR	Buffer,
-	IN	ULONG	BufferSize,
-	OUT	PULONG	ParamLen
-	)
-{
-	ULONG	c, plen = 0;
-	TCHAR	divider;
-
-	if (CmdLine == NULL)
-		return FALSE;
-
-	if (ParamLen != NULL)
-		*ParamLen = 0;
-
-	for (c = 0; c <= ParamIndex; c++) {
-		plen = 0;
-
-		while (*CmdLine == ' ')
-			CmdLine++;
-
-		switch (*CmdLine) {
-		case 0:
-			goto zero_term_exit;
-
-		case '"':
-			CmdLine++;
-			divider = '"';
-			break;
-
-		default:
-			divider = ' ';
-		}
-
-		while ((*CmdLine != '"') && (*CmdLine != divider) && (*CmdLine != 0)) {
-			plen++;
-			if (c == ParamIndex)
-				if ((plen < BufferSize) && (Buffer != NULL)) {
-					*Buffer = *CmdLine;
-					Buffer++;
-				}
-			CmdLine++;
-		}
-
-		if (*CmdLine != 0)
-			CmdLine++;
-	}
-
-zero_term_exit:
-
-	if ((Buffer != NULL) && (BufferSize > 0))
-		*Buffer = 0;
-
-	if (ParamLen != NULL)
-		*ParamLen = plen;
-
-	if (plen < BufferSize)
-		return TRUE;
-	else
-		return FALSE;
-}
-
-
-/*
-* supGetCommandLineParamW
-*
-* Purpose:
-*
-* Query token from command line.
-*
-* Return value: TRUE on success, FALSE otherwise
-*
-* Remark: UNICODE variant
-*
-*/
-BOOL supGetCommandLineParamW(
-	IN	LPCWSTR	CmdLine,
-	IN	ULONG	ParamIndex,
-	OUT	LPWSTR	Buffer,
-	IN	ULONG	BufferSize,
-	OUT	PULONG	ParamLen
-	)
-{
-	ULONG	c, plen = 0;
-	TCHAR	divider;
-
-	if (ParamLen != NULL)
-		*ParamLen = 0;
-
-	if (CmdLine == NULL) {
-		if ((Buffer != NULL) && (BufferSize > 0))
-			*Buffer = 0;
-		return FALSE;
-	}
-
-	for (c = 0; c <= ParamIndex; c++) {
-		plen = 0;
-
-		while (*CmdLine == ' ')
-			CmdLine++;
-
-		switch (*CmdLine) {
-		case 0:
-			goto zero_term_exit;
-
-		case '"':
-			CmdLine++;
-			divider = '"';
-			break;
-
-		default:
-			divider = ' ';
-		}
-
-		while ((*CmdLine != '"') && (*CmdLine != divider) && (*CmdLine != 0)) {
-			plen++;
-			if (c == ParamIndex)
-				if ((plen < BufferSize) && (Buffer != NULL)) {
-					*Buffer = *CmdLine;
-					Buffer++;
-				}
-			CmdLine++;
-		}
-
-		if (*CmdLine != 0)
-			CmdLine++;
-	}
-
-zero_term_exit:
-
-	if ((Buffer != NULL) && (BufferSize > 0))
-		*Buffer = 0;
-
-	if (ParamLen != NULL)
-		*ParamLen = plen;
-
-	if (plen < BufferSize)
-		return TRUE;
-	else
-		return FALSE;
 }

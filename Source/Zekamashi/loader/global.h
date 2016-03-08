@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2015
+*  (C) COPYRIGHT AUTHORS, 2014 - 2016
 *
 *  TITLE:       SUP.H
 *
-*  VERSION:     1.20
+*  VERSION:     1.50
 *
-*  DATE:        18 Mar 2015
+*  DATE:        04 Mar 2016
 *
 *  Common header file for the program support routines.
 *
@@ -22,9 +22,25 @@
 #pragma warning(disable: 4054) // %s : from function pointer %s to data pointer %s
 #pragma warning(disable: 6102) // Using %s from failed function call at line %u
 
+#if !defined UNICODE
+#error ANSI build is not supported
+#endif
+
+#if (_MSC_VER >= 1900) 
+#ifdef _DEBUG
+#pragma comment(lib, "vcruntimed.lib")
+#pragma comment(lib, "ucrtd.lib")
+#else
+#pragma comment(lib, "libvcruntime.lib")
+#endif
+#endif
+
 #include <Windows.h>
 #include <ntstatus.h>
 #include "ntos.h"
 #include "minirtl\minirtl.h"
-#include "instdrv.h"
+#include "minirtl\cmdline.h"
 #include "sup.h"
+
+#define TSUGUMI_IOCTL_REFRESH_LIST    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0700, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define TSUGUMI_SYM_LINK              L"\\\\.\\Tsugumi"
