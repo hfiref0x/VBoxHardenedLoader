@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.H
 *
-*  VERSION:     1.10
+*  VERSION:     1.60
 *
-*  DATE:        02 Feb 2016
+*  DATE:        30 Apr 2016
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -79,10 +79,9 @@ typedef struct _BINARY_PATCH_BLOCK {
 	UCHAR	Data[1];
 } BINARY_PATCH_BLOCK, *PBINARY_PATCH_BLOCK;
 
-#define TSUGUMI_TAG          'imsT'
-#define BLOCK_DATA_OFFSET    (ULONG_PTR)(&((PBINARY_PATCH_BLOCK)0)->Data)
-#define TSUGUMI_DRV_OBJECT   L"\\Driver\\TsmiDrv"
-#define TSUGUMI_DEV_OBJECT   L"\\Device\\Tsugumi"
-#define TSUGUMI_SYM_LINK     L"\\DosDevices\\Tsugumi"
-#define TSUGUMI_PARAMS       L"\\REGISTRY\\MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tsugumi\\Parameters"
-#define TSUGUMI_PATCHDATA    L"PatchData"
+#define TSUGUMI_TAG             'imsT'
+#define BLOCK_DATA_OFFSET       (ULONG_PTR)(&((PBINARY_PATCH_BLOCK)0)->Data)
+#define TSUGUMI_DRV_OBJECT      L"\\Driver\\TsmiDrv"
+#define TSUGUMI_DEV_OBJECT      L"\\Device\\Tsugumi"
+#define TSUGUMI_SYM_LINK        L"\\DosDevices\\Tsugumi"
+#define TSUGUMI_PARAMS          L"\\REGISTRY\\MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tsugumi\\Parameters"

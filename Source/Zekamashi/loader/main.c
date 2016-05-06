@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.50
+*  VERSION:     1.60
 *
-*  DATE:        06 Mar 2016
+*  DATE:        06 May 2016
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -17,36 +17,44 @@
 
 #include "global.h"
 #include "tables.h"
-#include <process.h>
 
 #pragma data_seg("shrd")
 volatile LONG           g_lApplicationInstances = 0;
 #pragma data_seg()
 
 #define TsmiParamsKey   L"Parameters"
-#define TsmiPatchData   L"PatchData"
-#define T_PROGRAMTITLE  L"VBoxLoader"
+#define TsmiVBoxDD      L"VBoxDD.dll"
+#define TsmiVBoxVMM     L"VBoxVMM.dll"
 
-ULONG                   g_TsmiPatchDataValueSize;
-PVOID                   g_TsmiPatchDataValue;
+#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.6.6000"
+
+TABLE_DESC              g_PatchData;
 
 //
 // Help output.
 //
-#define T_HELP	L"VirtualBox Hardened Loader v1.5.6000\n\n\r\
-loader [CustomPatchTable]\n\r\
-[CustomPatchTable] Optional parameter - table filename with full path.\n\n\r\
-Example: ldr.exe mydata.bin"
+#define T_HELP	L"Sets parameters for Tsugumi driver.\n\n\r\
+Optional parameters to execute: \n\n\r\
+LOADER [Table1] [Table2]\n\n\r\
+  Table1 - custom VBoxDD patch table fullpath.\n\r\
+  Table2 - custom VBoxVMM patch table fullpath.\n\n\r\
+  Example: ldr.exe vboxdd.bin vboxvmm.bin"
 
-#define MAXIMUM_SUPPORTED_VERSIONS 6
+
+#define MAXIMUM_SUPPORTED_VERSIONS 1
 TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
-    { L"5.0.0", TsmiPatchDataValue_500, sizeof(TsmiPatchDataValue_500) },
-    { L"5.0.2", TsmiPatchDataValue_502, sizeof(TsmiPatchDataValue_502) },
-    { L"5.0.8", TsmiPatchDataValue_508, sizeof(TsmiPatchDataValue_508) },
-    { L"5.0.10", TsmiPatchDataValue_5010, sizeof(TsmiPatchDataValue_5010) },
-    { L"5.0.12", TsmiPatchDataValue_5012, sizeof(TsmiPatchDataValue_5012) },
-    { L"5.0.16", TsmiPatchDataValue_5016, sizeof(TsmiPatchDataValue_5016) }
+    
+    { 
+        L"5.0.16", 
+        TsmiPatchDataValue_5016, sizeof(TsmiPatchDataValue_5016), 
+        TsmiPatchDataValueVMM_5016, sizeof(TsmiPatchDataValueVMM_5016) 
+    }
+
 };
+
+HANDLE     g_ConOut = NULL;
+BOOL       g_ConsoleOutput = FALSE;
+WCHAR      BE = 0xFEFF;
 
 /*
 * SetTsmiParams
@@ -62,7 +70,7 @@ BOOL SetTsmiParams(
 {
 	BOOL cond = FALSE, bResult = FALSE;
 	HKEY hRootKey, hParamsKey;
-	LRESULT lRet;
+	LRESULT lRet, lRet2;
 
 	hRootKey = NULL;
 	hParamsKey = NULL;
@@ -81,10 +89,13 @@ BOOL SetTsmiParams(
 			break;
 		}
 
-		lRet = RegSetValueEx(hParamsKey, TsmiPatchData, 0, REG_BINARY, 
-			(LPBYTE)g_TsmiPatchDataValue, g_TsmiPatchDataValueSize);
+		lRet = RegSetValueEx(hParamsKey, TsmiVBoxDD, 0, REG_BINARY, 
+			(LPBYTE)g_PatchData.DDTablePointer, g_PatchData.DDTableSize);
 
-        bResult = (lRet == ERROR_SUCCESS);
+        lRet2 = RegSetValueEx(hParamsKey, TsmiVBoxVMM, 0, REG_BINARY,
+            (LPBYTE)g_PatchData.VMMTablePointer, g_PatchData.VMMTableSize);
+
+        bResult = ((lRet == ERROR_SUCCESS) && (lRet2 == ERROR_SUCCESS));
 
 	} while (cond);
 
@@ -177,8 +188,8 @@ VOID SelectPatchTable(
 		//
 		// Select default patch table.
 		//
-		g_TsmiPatchDataValue = TsmiPatchDataValue_5016;
-		g_TsmiPatchDataValueSize = sizeof(TsmiPatchDataValue_5016);
+
+        g_PatchData = g_Tables[MAXIMUM_SUPPORTED_VERSIONS - 1];
 
 		lRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("Software\\Oracle\\VirtualBox"), 
 			0, KEY_READ, &hKey);
@@ -202,8 +213,7 @@ VOID SelectPatchTable(
 
         for (i = 0; i < MAXIMUM_SUPPORTED_VERSIONS; i++) {
             if (_strcmpi(g_Tables[i].lpDescription, szBuffer) == 0) {
-                g_TsmiPatchDataValue = g_Tables[i].TablePointer;
-                g_TsmiPatchDataValueSize = g_Tables[i].TableSize;
+                g_PatchData = g_Tables[i];
                 break;
             }
         }
@@ -230,15 +240,32 @@ void VBoxLdrMain(
 	BOOL    cond = FALSE;
 	LONG    x;
 	ULONG   l = 0;
-	PVOID   DataBuffer;
+	PVOID   DataBufferDD, DataBufferVMM;
 	HANDLE  hDevice;
-	WCHAR   szBuffer[MAX_PATH + 1];
+	WCHAR   szBuffer[MAX_PATH * 2];
 
 	__security_init_cookie();
 
-	DataBuffer = NULL;
+	DataBufferDD = NULL;
+    DataBufferVMM = NULL;
 
 	do {
+
+        g_ConOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (g_ConOut == INVALID_HANDLE_VALUE) {
+            break;
+        }
+
+        g_ConsoleOutput = TRUE;
+        if (!GetConsoleMode(g_ConOut, &l)) {
+            g_ConsoleOutput = FALSE;
+        }
+        
+        SetConsoleTitle(T_PROGRAMTITLE);
+        SetConsoleMode(g_ConOut, ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_OUTPUT);
+        if (g_ConsoleOutput == FALSE) {
+            WriteFile(g_ConOut, &BE, sizeof(WCHAR), &l, NULL);
+        }
 
 		//
 		// Check number of instances running.
@@ -256,40 +283,77 @@ void VBoxLdrMain(
 		//
 		// We support only Vista based OS.
 		//
-		if (l < 6) {
-			MessageBox(GetDesktopWindow(), TEXT("Unsupported OS."),
-				T_PROGRAMTITLE, MB_ICONINFORMATION);
+		if (l < 6) {		
+            cuiPrintText(g_ConOut, TEXT("Ldr: This operation system version is not supported"), g_ConsoleOutput, TRUE);
 			break;
 		}
 
-#ifndef _DEBUG
-		//
-		// Check if any VBox instances are running, they must be closed before our usage.
-		//
-		if (supProcessExist(L"VirtualBox.exe")) {
-			MessageBox(GetDesktopWindow(), TEXT("VirtualBox is running, close it before."),
-				T_PROGRAMTITLE, MB_ICONINFORMATION);
-			break;
-		}
-#endif
 		SelectPatchTable();
 
 		// Load custom patch table, if present.
 		RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
 		GetCommandLineParam(GetCommandLine(), 1, szBuffer, MAX_PATH, &l);
 		if (l > 0) {
+
+            if (_strcmpi(szBuffer, TEXT("/?")) == 0) {              
+                cuiPrintText(g_ConOut, T_HELP, g_ConsoleOutput, TRUE);               
+                break;
+            }
+
 			l = 0;
-			DataBuffer = FetchCustomPatchData(szBuffer, &l);
-			if ((DataBuffer != NULL) && (l > 0)) {
-				g_TsmiPatchDataValue = DataBuffer;
-				g_TsmiPatchDataValueSize = l;
-			}
+			DataBufferDD = FetchCustomPatchData(szBuffer, &l);
+			if ((DataBufferDD != NULL) && (l > 0)) {
+                g_PatchData.DDTablePointer = DataBufferDD;
+                g_PatchData.DDTableSize = l;
+            }
+            else {
+                cuiPrintText(g_ConOut, TEXT("Ldr: Error reading file at parameter 1"), g_ConsoleOutput, TRUE);
+                break;
+            }
 		}
+        RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
+        GetCommandLineParam(GetCommandLine(), 2, szBuffer, MAX_PATH, &l);
+        if (l > 0) {
+            l = 0;
+            DataBufferVMM = FetchCustomPatchData(szBuffer, &l);
+            if ((DataBufferVMM != NULL) && (l > 0)) {
+                g_PatchData.VMMTablePointer = DataBufferVMM;
+                g_PatchData.VMMTableSize = l;
+            }
+            else {
+                cuiPrintText(g_ConOut, TEXT("Ldr: Error reading file at parameter 2"), g_ConsoleOutput, TRUE);
+                break;
+            }
+        }
+
+#ifndef _DEBUG
+        //
+        // Check if any VBox instances are running, they must be closed before our usage.
+        //
+        if (supProcessExist(L"VirtualBox.exe")) {
+            cuiPrintText(g_ConOut, TEXT("Ldr: VirtualBox is running, close it before"), g_ConsoleOutput, TRUE);
+            break;
+        }
+#endif
+
+        RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
+        _strcpy(szBuffer, TEXT("Ldr: Patch table params -> \n\r"));
+        _strcat(szBuffer, TEXT("  VBoxDD mapped table pointer = 0x"));
+        u64tohex((ULONG_PTR)g_PatchData.DDTablePointer, _strend(szBuffer));
+        _strcat(szBuffer, TEXT("\n\r  VBoxDD table size = 0x"));
+        ultohex(g_PatchData.DDTableSize, _strend(szBuffer));
+        _strcat(szBuffer, TEXT("\n\r  VBoxVMM mapped table pointer = 0x"));
+        u64tohex((ULONG_PTR)g_PatchData.VMMTablePointer, _strend(szBuffer));
+        _strcat(szBuffer, TEXT("\n\r  VBoxVMM table size = 0x"));
+        ultohex(g_PatchData.VMMTableSize, _strend(szBuffer));
+        cuiPrintText(g_ConOut, szBuffer, g_ConsoleOutput, TRUE);
 
         if (!SetTsmiParams()) {
-            MessageBox(GetDesktopWindow(), TEXT("Cannot write Tsugumi settings."), 
-                T_PROGRAMTITLE, MB_ICONERROR);
+            cuiPrintText(g_ConOut, TEXT("Ldr: Cannot write Tsugumi settings"), g_ConsoleOutput, TRUE);
             break;
+        }
+        else {
+            cuiPrintText(g_ConOut, TEXT("Ldr: Tsugumi patch table parameters set"), g_ConsoleOutput, TRUE);
         }
 
 		// Open Tsugumi instance
@@ -304,19 +368,38 @@ void VBoxLdrMain(
 			);
 
 		if (hDevice != INVALID_HANDLE_VALUE) {
+
+            RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
+            _strcpy(szBuffer, TEXT("Ldr: Tsugumi device handle opened = "));
+            u64tostr((ULONG_PTR)hDevice, _strend(szBuffer));
+            cuiPrintText(g_ConOut, szBuffer, g_ConsoleOutput, TRUE);
+
 			DeviceIoControl(hDevice, TSUGUMI_IOCTL_REFRESH_LIST, NULL, 0, NULL, 0, &l, NULL);
+
+            RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
+            _strcpy(szBuffer, TEXT("Ldr: TSUGUMI_IOCTL_REFRESH_LIST request "));
+            if (l == 1) 
+                _strcat(szBuffer, TEXT("successful")); 
+            else 
+                _strcat(szBuffer, TEXT("failed"));
+            cuiPrintText(g_ConOut, szBuffer, g_ConsoleOutput, TRUE);
+
 			CloseHandle(hDevice);
 
-			//force windows rebuild image cache
-			supPurgeSystemCache();
+            if (l == 1) {
+                //force windows rebuild image cache
+                cuiPrintText(g_ConOut, TEXT("Ldr: purge system cache"), g_ConsoleOutput, TRUE);
+                supPurgeSystemCache();
+            }
+            
 		}
 		else {
-			MessageBox(GetDesktopWindow(), TEXT("Cannot open Tsugumi device."),
-				T_PROGRAMTITLE, MB_ICONERROR);
+            cuiPrintText(g_ConOut, 
+                TEXT("Ldr: Cannot open Tsugumi device, make sure driver is loaded before running this program"), g_ConsoleOutput, TRUE);
 		}
 
 	} while (cond);
-
+    cuiPrintText(g_ConOut, TEXT("Ldr: exit"), g_ConsoleOutput, TRUE);
 	InterlockedDecrement((PLONG)&g_lApplicationInstances);
 	ExitProcess(0);
 }
