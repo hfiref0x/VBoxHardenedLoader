@@ -7,7 +7,7 @@ Installation and use.
 5.0.8 
 5.0.10 
 5.0.12 
-5.0.16
+5.0.16 (loader v1.6+ support only 5.0.16)
 
 2) Create a new vm with the following settings.
 
@@ -63,8 +63,9 @@ Run from elevated command prompt
 
 loader.exe
 
-
 That all, now you can run your VM.
+
+If you want to stop monitor driver, without doing system reboot: run loader elevated with command line parameter /s (e.g. loader.exe /s). This will disable tsugumi monitoring and allow you to use VM without dlls patch. Run loader again to start monitoring (see above).
 
 DO NOT INSTALL VBOX ADDITIONS, this will ruin everything and there is NO WORKAROUND for this.
 

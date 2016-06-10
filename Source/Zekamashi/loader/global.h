@@ -4,9 +4,9 @@
 *
 *  TITLE:       SUP.H
 *
-*  VERSION:     1.60
+*  VERSION:     1.61
 *
-*  DATE:        29 Apr 2016
+*  DATE:        06 June 2016
 *
 *  Common header file for the program support routines.
 *
@@ -44,4 +44,5 @@
 #include "cui.h"
 
 #define TSUGUMI_IOCTL_REFRESH_LIST    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0700, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define TSUGUMI_IOCTL_MONITOR_STOP    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0701, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
 #define TSUGUMI_SYM_LINK              L"\\\\.\\Tsugumi"

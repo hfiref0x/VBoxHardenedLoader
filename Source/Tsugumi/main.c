@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.60
+*  VERSION:     1.61
 *
-*  DATE:        05 May 2016
+*  DATE:        06 June 2016
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -399,6 +399,20 @@ NTSTATUS DevioctlDispatch(
 #endif
             bytesIO = g_NotifySet;
             break;
+
+        case TSUGUMI_IOCTL_MONITOR_STOP:
+
+            bytesIO = 0;
+
+            if (g_NotifySet) {
+                status = PsRemoveLoadImageNotifyRoutine(TsmiPsImageHandler);
+                if (NT_SUCCESS(status)) {
+                    g_NotifySet = FALSE;
+                    bytesIO = 1;
+                }
+            }
+            break;
+
         default:
             status = STATUS_INVALID_PARAMETER;
         };

@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.60
+*  VERSION:     1.61
 *
-*  DATE:        06 May 2016
+*  DATE:        08 June 2016
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -35,7 +35,8 @@ TABLE_DESC              g_PatchData;
 //
 #define T_HELP	L"Sets parameters for Tsugumi driver.\n\n\r\
 Optional parameters to execute: \n\n\r\
-LOADER [Table1] [Table2]\n\n\r\
+LOADER [/s] or [Table1] [Table2]\n\n\r\
+  /s - stop monitoring and purge system cache.\n\r\
   Table1 - custom VBoxDD patch table fullpath.\n\r\
   Table2 - custom VBoxVMM patch table fullpath.\n\n\r\
   Example: ldr.exe vboxdd.bin vboxvmm.bin"
@@ -226,7 +227,71 @@ VOID SelectPatchTable(
 }
 
 /*
-* ldrMain
+* SendCommand
+*
+* Purpose:
+*
+* Call Tsugumi driver with IOCTL.
+*
+*/
+VOID SendCommand(
+    DWORD dwCmd,
+    LPWSTR lpCmd
+    )
+{
+    ULONG  l = 0;
+    HANDLE hDevice = INVALID_HANDLE_VALUE;
+    WCHAR  szBuffer[MAX_PATH * 2];
+
+    // Open Tsugumi instance
+    hDevice = NULL;
+    _strcpy(szBuffer, TSUGUMI_SYM_LINK);
+    hDevice = CreateFile(szBuffer,
+        GENERIC_READ | GENERIC_WRITE,
+        0, NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+    );
+
+    if (hDevice != INVALID_HANDLE_VALUE) {
+
+        RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
+        _strcpy(szBuffer, TEXT("Ldr: Tsugumi device handle opened = "));
+        u64tostr((ULONG_PTR)hDevice, _strend(szBuffer));
+        cuiPrintText(g_ConOut, szBuffer, g_ConsoleOutput, TRUE);
+
+        DeviceIoControl(hDevice, dwCmd, NULL, 0, NULL, 0, &l, NULL);
+
+        RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
+        _strcpy(szBuffer, TEXT("Ldr: "));
+        _strcat(szBuffer, lpCmd);
+        _strcat(szBuffer, TEXT(" request"));
+
+        if (l == 1)
+            _strcat(szBuffer, TEXT(" successful"));
+        else
+            _strcat(szBuffer, TEXT(" failed"));
+        cuiPrintText(g_ConOut, szBuffer, g_ConsoleOutput, TRUE);
+
+        CloseHandle(hDevice);
+
+        if (l == 1) {
+            //force windows rebuild image cache
+            cuiPrintText(g_ConOut, TEXT("Ldr: purge system cache"), g_ConsoleOutput, TRUE);
+            supPurgeSystemCache();
+        }
+
+    }
+    else {
+        cuiPrintText(g_ConOut,
+            TEXT("Ldr: Cannot open Tsugumi device, make sure driver is loaded before running this program"), g_ConsoleOutput, TRUE);
+    }
+}
+
+
+/*
+* VBoxLdrMain
 *
 * Purpose:
 *
@@ -239,9 +304,8 @@ void VBoxLdrMain(
 {
 	BOOL    cond = FALSE;
 	LONG    x;
-	ULONG   l = 0;
+	ULONG   l = 0, uCmd = 0;
 	PVOID   DataBufferDD, DataBufferVMM;
-	HANDLE  hDevice;
 	WCHAR   szBuffer[MAX_PATH * 2];
 
 	__security_init_cookie();
@@ -290,7 +354,8 @@ void VBoxLdrMain(
 
 		SelectPatchTable();
 
-		// Load custom patch table, if present.
+        // Parse command line.
+       
 		RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
 		GetCommandLineParam(GetCommandLine(), 1, szBuffer, MAX_PATH, &l);
 		if (l > 0) {
@@ -300,29 +365,38 @@ void VBoxLdrMain(
                 break;
             }
 
-			l = 0;
-			DataBufferDD = FetchCustomPatchData(szBuffer, &l);
-			if ((DataBufferDD != NULL) && (l > 0)) {
-                g_PatchData.DDTablePointer = DataBufferDD;
-                g_PatchData.DDTableSize = l;
+            if (_strcmpi(szBuffer, TEXT("/s")) == 0) {
+                uCmd = TSUGUMI_IOCTL_MONITOR_STOP;
             }
-            else {
-                cuiPrintText(g_ConOut, TEXT("Ldr: Error reading file at parameter 1"), g_ConsoleOutput, TRUE);
-                break;
+
+            if (uCmd != TSUGUMI_IOCTL_MONITOR_STOP) {
+                l = 0;
+                DataBufferDD = FetchCustomPatchData(szBuffer, &l);
+                if ((DataBufferDD != NULL) && (l > 0)) {
+                    g_PatchData.DDTablePointer = DataBufferDD;
+                    g_PatchData.DDTableSize = l;
+                }
+                else {
+                    cuiPrintText(g_ConOut, TEXT("Ldr: Error reading file at parameter 1"), g_ConsoleOutput, TRUE);
+                    break;
+                }
             }
 		}
-        RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
-        GetCommandLineParam(GetCommandLine(), 2, szBuffer, MAX_PATH, &l);
-        if (l > 0) {
-            l = 0;
-            DataBufferVMM = FetchCustomPatchData(szBuffer, &l);
-            if ((DataBufferVMM != NULL) && (l > 0)) {
-                g_PatchData.VMMTablePointer = DataBufferVMM;
-                g_PatchData.VMMTableSize = l;
-            }
-            else {
-                cuiPrintText(g_ConOut, TEXT("Ldr: Error reading file at parameter 2"), g_ConsoleOutput, TRUE);
-                break;
+
+        if (uCmd != TSUGUMI_IOCTL_MONITOR_STOP) {
+            RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
+            GetCommandLineParam(GetCommandLine(), 2, szBuffer, MAX_PATH, &l);
+            if (l > 0) {
+                l = 0;
+                DataBufferVMM = FetchCustomPatchData(szBuffer, &l);
+                if ((DataBufferVMM != NULL) && (l > 0)) {
+                    g_PatchData.VMMTablePointer = DataBufferVMM;
+                    g_PatchData.VMMTableSize = l;
+                }
+                else {
+                    cuiPrintText(g_ConOut, TEXT("Ldr: Error reading file at parameter 2"), g_ConsoleOutput, TRUE);
+                    break;
+                }
             }
         }
 
@@ -335,6 +409,10 @@ void VBoxLdrMain(
             break;
         }
 #endif
+        if (uCmd == TSUGUMI_IOCTL_MONITOR_STOP) {
+            SendCommand(TSUGUMI_IOCTL_MONITOR_STOP, TEXT("TSUGUMI_IOCTL_MONITOR_STOP"));
+            break;
+        }
 
         RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
         _strcpy(szBuffer, TEXT("Ldr: Patch table params -> \n\r"));
@@ -356,47 +434,7 @@ void VBoxLdrMain(
             cuiPrintText(g_ConOut, TEXT("Ldr: Tsugumi patch table parameters set"), g_ConsoleOutput, TRUE);
         }
 
-		// Open Tsugumi instance
-		hDevice = NULL;
-		_strcpy(szBuffer, TSUGUMI_SYM_LINK);
-		hDevice = CreateFile(szBuffer,
-			GENERIC_READ | GENERIC_WRITE,
-			0, NULL,
-			OPEN_EXISTING,
-			FILE_ATTRIBUTE_NORMAL,
-			NULL
-			);
-
-		if (hDevice != INVALID_HANDLE_VALUE) {
-
-            RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
-            _strcpy(szBuffer, TEXT("Ldr: Tsugumi device handle opened = "));
-            u64tostr((ULONG_PTR)hDevice, _strend(szBuffer));
-            cuiPrintText(g_ConOut, szBuffer, g_ConsoleOutput, TRUE);
-
-			DeviceIoControl(hDevice, TSUGUMI_IOCTL_REFRESH_LIST, NULL, 0, NULL, 0, &l, NULL);
-
-            RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
-            _strcpy(szBuffer, TEXT("Ldr: TSUGUMI_IOCTL_REFRESH_LIST request "));
-            if (l == 1) 
-                _strcat(szBuffer, TEXT("successful")); 
-            else 
-                _strcat(szBuffer, TEXT("failed"));
-            cuiPrintText(g_ConOut, szBuffer, g_ConsoleOutput, TRUE);
-
-			CloseHandle(hDevice);
-
-            if (l == 1) {
-                //force windows rebuild image cache
-                cuiPrintText(g_ConOut, TEXT("Ldr: purge system cache"), g_ConsoleOutput, TRUE);
-                supPurgeSystemCache();
-            }
-            
-		}
-		else {
-            cuiPrintText(g_ConOut, 
-                TEXT("Ldr: Cannot open Tsugumi device, make sure driver is loaded before running this program"), g_ConsoleOutput, TRUE);
-		}
+        SendCommand(TSUGUMI_IOCTL_REFRESH_LIST, TEXT("TSUGUMI_IOCTL_REFRESH_LIST"));
 
 	} while (cond);
     cuiPrintText(g_ConOut, TEXT("Ldr: exit"), g_ConsoleOutput, TRUE);
