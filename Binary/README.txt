@@ -2,12 +2,18 @@ Installation and use.
 
 1) Install supported VirtualBox version.
  
+Loader v1.2x - v1.5x support only
+
 5.0.0
 5.0.2 
 5.0.8 
 5.0.10 
 5.0.12 
-5.0.16 (loader v1.6+ support only 5.0.16)
+
+Loader v1.6+ support only
+
+5.0.16
+5.0.22 
 
 2) Create a new vm with the following settings.
 
