@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.61
+*  VERSION:     1.62
 *
-*  DATE:        08 June 2016
+*  DATE:        24 June 2016
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -42,13 +42,19 @@ LOADER [/s] or [Table1] [Table2]\n\n\r\
   Example: ldr.exe vboxdd.bin vboxvmm.bin"
 
 
-#define MAXIMUM_SUPPORTED_VERSIONS 1
+#define MAXIMUM_SUPPORTED_VERSIONS 2
 TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
     
     { 
         L"5.0.16", 
         TsmiPatchDataValue_5016, sizeof(TsmiPatchDataValue_5016), 
         TsmiPatchDataValueVMM_5016, sizeof(TsmiPatchDataValueVMM_5016) 
+    },
+
+    {
+        L"5.0.22",
+        TsmiPatchDataValue_5022, sizeof(TsmiPatchDataValue_5022),
+        TsmiPatchDataValueVMM_5022, sizeof(TsmiPatchDataValueVMM_5022),
     }
 
 };
