@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.62
+*  VERSION:     1.63
 *
-*  DATE:        24 June 2016
+*  DATE:        18 July 2016
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -42,21 +42,26 @@ LOADER [/s] or [Table1] [Table2]\n\n\r\
   Example: ldr.exe vboxdd.bin vboxvmm.bin"
 
 
-#define MAXIMUM_SUPPORTED_VERSIONS 2
+#define MAXIMUM_SUPPORTED_VERSIONS 3
 TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
-    
-    { 
-        L"5.0.16", 
-        TsmiPatchDataValue_5016, sizeof(TsmiPatchDataValue_5016), 
-        TsmiPatchDataValueVMM_5016, sizeof(TsmiPatchDataValueVMM_5016) 
+
+    {
+        L"5.0.16",
+        TsmiPatchDataValue_5016, sizeof(TsmiPatchDataValue_5016),
+        TsmiPatchDataValueVMM_5016, sizeof(TsmiPatchDataValueVMM_5016)
     },
 
     {
         L"5.0.22",
         TsmiPatchDataValue_5022, sizeof(TsmiPatchDataValue_5022),
-        TsmiPatchDataValueVMM_5022, sizeof(TsmiPatchDataValueVMM_5022),
-    }
+        TsmiPatchDataValueVMM_5022, sizeof(TsmiPatchDataValueVMM_5022)
+    },
 
+    {
+        L"5.1.0",
+        TsmiPatchDataValue_5100, sizeof(TsmiPatchDataValue_5100),
+        TsmiPatchDataValueVMM_5100, sizeof(TsmiPatchDataValueVMM_5100)
+    }
 };
 
 HANDLE     g_ConOut = NULL;
@@ -72,46 +77,46 @@ WCHAR      BE = 0xFEFF;
 *
 */
 BOOL SetTsmiParams(
-	VOID
-	)
+    VOID
+)
 {
-	BOOL cond = FALSE, bResult = FALSE;
-	HKEY hRootKey, hParamsKey;
-	LRESULT lRet, lRet2;
+    BOOL cond = FALSE, bResult = FALSE;
+    HKEY hRootKey, hParamsKey;
+    LRESULT lRet, lRet2;
 
-	hRootKey = NULL;
-	hParamsKey = NULL;
+    hRootKey = NULL;
+    hParamsKey = NULL;
 
-	do {
+    do {
 
-		lRet = RegCreateKeyEx(HKEY_LOCAL_MACHINE, L"System\\CurrentControlSet\\Services\\Tsugumi", 0, NULL, 0, KEY_ALL_ACCESS,
-			NULL, &hRootKey, NULL);
+        lRet = RegCreateKeyEx(HKEY_LOCAL_MACHINE, L"System\\CurrentControlSet\\Services\\Tsugumi", 0, NULL, 0, KEY_ALL_ACCESS,
+            NULL, &hRootKey, NULL);
 
-		if ((lRet != ERROR_SUCCESS) || (hRootKey == NULL)) {
-			break;
-		}
+        if ((lRet != ERROR_SUCCESS) || (hRootKey == NULL)) {
+            break;
+        }
 
-		lRet = RegCreateKey(hRootKey, TsmiParamsKey, &hParamsKey);
-		if ((lRet != ERROR_SUCCESS) || (hParamsKey == NULL)) {
-			break;
-		}
+        lRet = RegCreateKey(hRootKey, TsmiParamsKey, &hParamsKey);
+        if ((lRet != ERROR_SUCCESS) || (hParamsKey == NULL)) {
+            break;
+        }
 
-		lRet = RegSetValueEx(hParamsKey, TsmiVBoxDD, 0, REG_BINARY, 
-			(LPBYTE)g_PatchData.DDTablePointer, g_PatchData.DDTableSize);
+        lRet = RegSetValueEx(hParamsKey, TsmiVBoxDD, 0, REG_BINARY,
+            (LPBYTE)g_PatchData.DDTablePointer, g_PatchData.DDTableSize);
 
         lRet2 = RegSetValueEx(hParamsKey, TsmiVBoxVMM, 0, REG_BINARY,
             (LPBYTE)g_PatchData.VMMTablePointer, g_PatchData.VMMTableSize);
 
         bResult = ((lRet == ERROR_SUCCESS) && (lRet2 == ERROR_SUCCESS));
 
-	} while (cond);
+    } while (cond);
 
-	if (hRootKey) {
-		RegCloseKey(hRootKey);
-	}
-	if (hParamsKey) {
-		RegCloseKey(hParamsKey);
-	}
+    if (hRootKey) {
+        RegCloseKey(hRootKey);
+    }
+    if (hParamsKey) {
+        RegCloseKey(hParamsKey);
+    }
 
     return bResult;
 }
@@ -126,49 +131,49 @@ BOOL SetTsmiParams(
 *
 */
 PVOID FetchCustomPatchData(
-	_In_ LPWSTR lpFileName,
-	_Inout_opt_ PDWORD pdwPatchDataSize
-	)
+    _In_ LPWSTR lpFileName,
+    _Inout_opt_ PDWORD pdwPatchDataSize
+)
 {
-	HANDLE hFile;
-	DWORD dwSize;
-	PVOID DataBuffer = NULL;
+    HANDLE hFile;
+    DWORD dwSize;
+    PVOID DataBuffer = NULL;
 
-	//
-	// Validate input parameter.
-	//
-	if (lpFileName == NULL) {
-		return NULL;
-	}
+    //
+    // Validate input parameter.
+    //
+    if (lpFileName == NULL) {
+        return NULL;
+    }
 
-	//
-	// Open file with custom patch table.
-	//
-	hFile = CreateFile(lpFileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-	if (hFile == INVALID_HANDLE_VALUE) {
-		return NULL;
-	}
+    //
+    // Open file with custom patch table.
+    //
+    hFile = CreateFile(lpFileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return NULL;
+    }
 
-	//
-	// Get file size for buffer, allocate it and read data.
-	//
-	dwSize = GetFileSize(hFile, NULL);
-	if (dwSize > 0 && dwSize <= 4096) {
+    //
+    // Get file size for buffer, allocate it and read data.
+    //
+    dwSize = GetFileSize(hFile, NULL);
+    if (dwSize > 0 && dwSize <= 4096) {
 
-		DataBuffer = (PVOID)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwSize);
-		if (DataBuffer != NULL) {
+        DataBuffer = (PVOID)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwSize);
+        if (DataBuffer != NULL) {
 
-			if (ReadFile(hFile, DataBuffer, dwSize, &dwSize, NULL)) {
-				
-				// Check if optional parameter is set and return data size on true.
-				if (pdwPatchDataSize != NULL) {
-					*pdwPatchDataSize = dwSize;
-				}
-			}
-		}
-	}
-	CloseHandle(hFile);
-	return DataBuffer;
+            if (ReadFile(hFile, DataBuffer, dwSize, &dwSize, NULL)) {
+
+                // Check if optional parameter is set and return data size on true.
+                if (pdwPatchDataSize != NULL) {
+                    *pdwPatchDataSize = dwSize;
+                }
+            }
+        }
+    }
+    CloseHandle(hFile);
+    return DataBuffer;
 }
 
 /*
@@ -180,43 +185,42 @@ PVOID FetchCustomPatchData(
 *
 */
 VOID SelectPatchTable(
-	VOID
-	)
+    VOID
+)
 {
-	BOOL     cond = FALSE;
-	DWORD    dwSize;
-	HKEY     hKey = NULL;
-	LRESULT  lRet;
+    BOOL     cond = FALSE;
+    DWORD    dwSize;
+    HKEY     hKey = NULL;
+    LRESULT  lRet;
     INT      i;
 
-	TCHAR	szBuffer[MAX_PATH + 1];
+    TCHAR	szBuffer[MAX_PATH + 1];
 
-	do {
-		//
-		// Select default patch table.
-		//
-
+    do {
+        //
+        // Select default patch table.
+        //
         g_PatchData = g_Tables[MAXIMUM_SUPPORTED_VERSIONS - 1];
 
-		lRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("Software\\Oracle\\VirtualBox"), 
-			0, KEY_READ, &hKey);
-	
-		//
-		// If key not exists, return FALSE and loader will exit.
-		//
-		if ((lRet != ERROR_SUCCESS) || (hKey == NULL)) {
-			break;
-		}
+        lRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("Software\\Oracle\\VirtualBox"),
+            0, KEY_READ, &hKey);
 
-		//
-		// Read VBox version and select proper table.
-		//
-		RtlSecureZeroMemory(&szBuffer, sizeof(szBuffer));
-		dwSize = MAX_PATH * sizeof(TCHAR);
-		lRet = RegQueryValueEx(hKey, TEXT("Version"), NULL, NULL, (LPBYTE)&szBuffer, &dwSize);
-		if (lRet != ERROR_SUCCESS) {
-			break;
-		}
+        //
+        // If key not exists, return FALSE and loader will exit.
+        //
+        if ((lRet != ERROR_SUCCESS) || (hKey == NULL)) {
+            break;
+        }
+
+        //
+        // Read VBox version and select proper table.
+        //
+        RtlSecureZeroMemory(&szBuffer, sizeof(szBuffer));
+        dwSize = MAX_PATH * sizeof(TCHAR);
+        lRet = RegQueryValueEx(hKey, TEXT("Version"), NULL, NULL, (LPBYTE)&szBuffer, &dwSize);
+        if (lRet != ERROR_SUCCESS) {
+            break;
+        }
 
         for (i = 0; i < MAXIMUM_SUPPORTED_VERSIONS; i++) {
             if (_strcmpi(g_Tables[i].lpDescription, szBuffer) == 0) {
@@ -225,11 +229,11 @@ VOID SelectPatchTable(
             }
         }
 
-	} while (cond);
+    } while (cond);
 
-	if (hKey) {
-		RegCloseKey(hKey);
-	}
+    if (hKey) {
+        RegCloseKey(hKey);
+    }
 }
 
 /*
@@ -243,7 +247,7 @@ VOID SelectPatchTable(
 VOID SendCommand(
     DWORD dwCmd,
     LPWSTR lpCmd
-    )
+)
 {
     ULONG  l = 0;
     HANDLE hDevice = INVALID_HANDLE_VALUE;
@@ -305,21 +309,21 @@ VOID SendCommand(
 *
 */
 void VBoxLdrMain(
-	VOID
-	)
+    VOID
+)
 {
-	BOOL    cond = FALSE;
-	LONG    x;
-	ULONG   l = 0, uCmd = 0;
-	PVOID   DataBufferDD, DataBufferVMM;
-	WCHAR   szBuffer[MAX_PATH * 2];
+    BOOL    cond = FALSE;
+    LONG    x;
+    ULONG   l = 0, uCmd = 0;
+    PVOID   DataBufferDD, DataBufferVMM;
+    WCHAR   szBuffer[MAX_PATH * 2];
 
-	__security_init_cookie();
+    __security_init_cookie();
 
-	DataBufferDD = NULL;
+    DataBufferDD = NULL;
     DataBufferVMM = NULL;
 
-	do {
+    do {
 
         g_ConOut = GetStdHandle(STD_OUTPUT_HANDLE);
         if (g_ConOut == INVALID_HANDLE_VALUE) {
@@ -330,44 +334,44 @@ void VBoxLdrMain(
         if (!GetConsoleMode(g_ConOut, &l)) {
             g_ConsoleOutput = FALSE;
         }
-        
+
         SetConsoleTitle(T_PROGRAMTITLE);
         SetConsoleMode(g_ConOut, ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_OUTPUT);
         if (g_ConsoleOutput == FALSE) {
             WriteFile(g_ConOut, &BE, sizeof(WCHAR), &l, NULL);
         }
 
-		//
-		// Check number of instances running.
-		//
-		x = InterlockedIncrement((PLONG)&g_lApplicationInstances);
-		if (x > 1) {
-			break;
-		}
+        //
+        // Check number of instances running.
+        //
+        x = InterlockedIncrement((PLONG)&g_lApplicationInstances);
+        if (x > 1) {
+            break;
+        }
 
-		//
-		// Check OS version.
-		//
-		RtlGetNtVersionNumbers(&l, NULL, NULL);
+        //
+        // Check OS version.
+        //
+        RtlGetNtVersionNumbers(&l, NULL, NULL);
 
-		//
-		// We support only Vista based OS.
-		//
-		if (l < 6) {		
+        //
+        // We support only Vista based OS.
+        //
+        if (l < 6) {
             cuiPrintText(g_ConOut, TEXT("Ldr: This operation system version is not supported"), g_ConsoleOutput, TRUE);
-			break;
-		}
+            break;
+        }
 
-		SelectPatchTable();
+        SelectPatchTable();
 
         // Parse command line.
-       
-		RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
-		GetCommandLineParam(GetCommandLine(), 1, szBuffer, MAX_PATH, &l);
-		if (l > 0) {
 
-            if (_strcmpi(szBuffer, TEXT("/?")) == 0) {              
-                cuiPrintText(g_ConOut, T_HELP, g_ConsoleOutput, TRUE);               
+        RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
+        GetCommandLineParam(GetCommandLine(), 1, szBuffer, MAX_PATH, &l);
+        if (l > 0) {
+
+            if (_strcmpi(szBuffer, TEXT("/?")) == 0) {
+                cuiPrintText(g_ConOut, T_HELP, g_ConsoleOutput, TRUE);
                 break;
             }
 
@@ -387,7 +391,7 @@ void VBoxLdrMain(
                     break;
                 }
             }
-		}
+        }
 
         if (uCmd != TSUGUMI_IOCTL_MONITOR_STOP) {
             RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
@@ -442,8 +446,8 @@ void VBoxLdrMain(
 
         SendCommand(TSUGUMI_IOCTL_REFRESH_LIST, TEXT("TSUGUMI_IOCTL_REFRESH_LIST"));
 
-	} while (cond);
+    } while (cond);
     cuiPrintText(g_ConOut, TEXT("Ldr: exit"), g_ConsoleOutput, TRUE);
-	InterlockedDecrement((PLONG)&g_lApplicationInstances);
-	ExitProcess(0);
+    InterlockedDecrement((PLONG)&g_lApplicationInstances);
+    ExitProcess(0);
 }
