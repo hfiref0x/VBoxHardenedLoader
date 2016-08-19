@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.64
+*  VERSION:     1.65
 *
-*  DATE:        22 July 2016
+*  DATE:        18 Aug 2016
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -42,7 +42,7 @@ LOADER [/s] or [Table1] [Table2]\n\n\r\
   Example: ldr.exe vboxdd.bin vboxvmm.bin"
 
 
-#define MAXIMUM_SUPPORTED_VERSIONS 4
+#define MAXIMUM_SUPPORTED_VERSIONS 5
 TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
 
     {
@@ -67,6 +67,12 @@ TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
         L"5.1.2",
         TsmiPatchDataValue_5120, sizeof(TsmiPatchDataValue_5120),
         TsmiPatchDataValueVMM_5120, sizeof(TsmiPatchDataValueVMM_5120)
+    },
+
+    {
+        L"5.1.4",
+        TsmiPatchDataValue_5140, sizeof(TsmiPatchDataValue_5140),
+        TsmiPatchDataValueVMM_5140, sizeof(TsmiPatchDataValueVMM_5140)
     }
 };
 
@@ -107,11 +113,18 @@ BOOL SetTsmiParams(
             break;
         }
 
-        lRet = RegSetValueEx(hParamsKey, TsmiVBoxDD, 0, REG_BINARY,
-            (LPBYTE)g_PatchData.DDTablePointer, g_PatchData.DDTableSize);
+        lRet = ERROR_BAD_ARGUMENTS;
+        lRet2 = ERROR_BAD_ARGUMENTS;
 
-        lRet2 = RegSetValueEx(hParamsKey, TsmiVBoxVMM, 0, REG_BINARY,
-            (LPBYTE)g_PatchData.VMMTablePointer, g_PatchData.VMMTableSize);
+        if ((g_PatchData.DDTablePointer) && (g_PatchData.DDTableSize > 0)) {
+            lRet = RegSetValueEx(hParamsKey, TsmiVBoxDD, 0, REG_BINARY,
+                (LPBYTE)g_PatchData.DDTablePointer, g_PatchData.DDTableSize);
+        }
+
+        if ((g_PatchData.VMMTablePointer) && (g_PatchData.VMMTableSize > 0)) {
+            lRet2 = RegSetValueEx(hParamsKey, TsmiVBoxVMM, 0, REG_BINARY,
+                (LPBYTE)g_PatchData.VMMTablePointer, g_PatchData.VMMTableSize);
+        }
 
         bResult = ((lRet == ERROR_SUCCESS) && (lRet2 == ERROR_SUCCESS));
 
