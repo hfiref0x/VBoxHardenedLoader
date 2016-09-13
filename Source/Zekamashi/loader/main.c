@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.65
+*  VERSION:     1.67
 *
-*  DATE:        18 Aug 2016
+*  DATE:        13 Sep 2016
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -42,7 +42,7 @@ LOADER [/s] or [Table1] [Table2]\n\n\r\
   Example: ldr.exe vboxdd.bin vboxvmm.bin"
 
 
-#define MAXIMUM_SUPPORTED_VERSIONS 5
+#define MAXIMUM_SUPPORTED_VERSIONS 6
 TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
 
     {
@@ -72,7 +72,13 @@ TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
     {
         L"5.1.4",
         TsmiPatchDataValue_5140, sizeof(TsmiPatchDataValue_5140),
-        TsmiPatchDataValueVMM_5140, sizeof(TsmiPatchDataValueVMM_5140)
+        NULL, 0
+    },
+
+    {
+        L"5.1.6",
+        TsmiPatchDataValue_5160, sizeof(TsmiPatchDataValue_5160),
+        NULL, 0
     }
 };
 
@@ -94,7 +100,7 @@ BOOL SetTsmiParams(
 {
     BOOL cond = FALSE, bResult = FALSE;
     HKEY hRootKey, hParamsKey;
-    LRESULT lRet, lRet2;
+    LRESULT lRet = ERROR_BAD_ARGUMENTS;
 
     hRootKey = NULL;
     hParamsKey = NULL;
@@ -114,19 +120,27 @@ BOOL SetTsmiParams(
         }
 
         lRet = ERROR_BAD_ARGUMENTS;
-        lRet2 = ERROR_BAD_ARGUMENTS;
-
         if ((g_PatchData.DDTablePointer) && (g_PatchData.DDTableSize > 0)) {
             lRet = RegSetValueEx(hParamsKey, TsmiVBoxDD, 0, REG_BINARY,
                 (LPBYTE)g_PatchData.DDTablePointer, g_PatchData.DDTableSize);
+            if (lRet != ERROR_SUCCESS)
+                break;
+        }
+        else {
+            RegDeleteValue(hParamsKey, TsmiVBoxDD);
         }
 
         if ((g_PatchData.VMMTablePointer) && (g_PatchData.VMMTableSize > 0)) {
-            lRet2 = RegSetValueEx(hParamsKey, TsmiVBoxVMM, 0, REG_BINARY,
+            lRet = RegSetValueEx(hParamsKey, TsmiVBoxVMM, 0, REG_BINARY,
                 (LPBYTE)g_PatchData.VMMTablePointer, g_PatchData.VMMTableSize);
+            if (lRet != ERROR_SUCCESS)
+                break;
+        }
+        else {
+            RegDeleteValue(hParamsKey, TsmiVBoxVMM);
         }
 
-        bResult = ((lRet == ERROR_SUCCESS) && (lRet2 == ERROR_SUCCESS));
+        bResult = TRUE;
 
     } while (cond);
 
@@ -449,10 +463,15 @@ void VBoxLdrMain(
         u64tohex((ULONG_PTR)g_PatchData.DDTablePointer, _strend(szBuffer));
         _strcat(szBuffer, TEXT("\n\r  VBoxDD table size = 0x"));
         ultohex(g_PatchData.DDTableSize, _strend(szBuffer));
-        _strcat(szBuffer, TEXT("\n\r  VBoxVMM mapped table pointer = 0x"));
-        u64tohex((ULONG_PTR)g_PatchData.VMMTablePointer, _strend(szBuffer));
-        _strcat(szBuffer, TEXT("\n\r  VBoxVMM table size = 0x"));
-        ultohex(g_PatchData.VMMTableSize, _strend(szBuffer));
+
+        if (g_PatchData.VMMTablePointer != NULL) {
+            _strcat(szBuffer, TEXT("\n\r  VBoxVMM mapped table pointer = 0x"));
+            u64tohex((ULONG_PTR)g_PatchData.VMMTablePointer, _strend(szBuffer));
+        }
+        if (g_PatchData.VMMTableSize != 0) {
+            _strcat(szBuffer, TEXT("\n\r  VBoxVMM table size = 0x"));
+            ultohex(g_PatchData.VMMTableSize, _strend(szBuffer));
+        }
         cuiPrintText(g_ConOut, szBuffer, g_ConsoleOutput, TRUE);
 
         if (!SetTsmiParams()) {

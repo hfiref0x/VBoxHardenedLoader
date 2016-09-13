@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.61
+*  VERSION:     1.66
 *
-*  DATE:        06 June 2016
+*  DATE:        10 Aug 2016
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -18,21 +18,26 @@
 #include "main.h"
 
 //#define _DEBUGMSG
+//#define _VMM_PATCH_ENABLED
 
 #pragma warning(disable: 6102) //"Using %s from failed call at line %s"
 
-//synchronization mutex
+// Synchronization mutex
 static KMUTEX      g_PatchChainsLock;
 
-//notify flag 
+// Notify flag 
 static BOOLEAN     g_NotifySet;
 
-//data buffer
+// Data buffer
 static PKEY_VALUE_PARTIAL_INFORMATION    PatchChains_VBoxDD = NULL;
-static PKEY_VALUE_PARTIAL_INFORMATION    PatchChains_VBoxVMM = NULL;
-
 static const WCHAR DDname[] = L"VBoxDD.dll";
+
+#ifdef _VMM_PATCH_ENABLED
+
+static PKEY_VALUE_PARTIAL_INFORMATION    PatchChains_VBoxVMM = NULL;
 static const WCHAR VMMname[] = L"VBoxVMM.dll";
+
+#endif //_VMM_PATCH_ENABLED
 
 /*
 * TsmiHandleMemWrite
@@ -115,9 +120,13 @@ NTSTATUS TsmiApplyPatchChains(
             l += BLOCK_DATA_OFFSET + Chains->DataLength;
             Chains = (PBINARY_PATCH_BLOCK)((ULONG_PTR)Chains + BLOCK_DATA_OFFSET + Chains->DataLength);
         }
+
 #ifdef _DEBUGMSG
+
         DbgPrint("[TSMI] Patch apply complete\n");
-#endif
+
+#endif //_DEBUGMSG
+
     }
 
     KeReleaseMutex(&g_PatchChainsLock, FALSE);
@@ -155,19 +164,32 @@ VOID TsmiPsImageHandler(
 
     if (_wcsnicmp(&FullImageName->Buffer[l], DDname, wcslen(DDname)) == 0) {
         if (NT_SUCCESS(TsmiApplyPatchChains(PatchChains_VBoxDD, ImageInfo))) {
+
 #ifdef _DEBUGMSG
+
             DbgPrint("[TSMI]  DD patched\n");
+
 #endif
+
         }
     }
 
+#ifdef _VMM_PATCH_ENABLED
+
     if (_wcsnicmp(&FullImageName->Buffer[l], VMMname, wcslen(VMMname)) == 0) {
         if (NT_SUCCESS(TsmiApplyPatchChains(PatchChains_VBoxVMM, ImageInfo))) {
+
 #ifdef _DEBUGMSG
+
             DbgPrint("[TSMI]  MM patched\n");
-#endif
+
+#endif //_DEBUGMSG
+
         }
     }
+
+#endif //_VMM_PATCH_ENABLED
+
 }
 
 /*
@@ -227,11 +249,27 @@ NTSTATUS TsmiReadPatchChains(
         return STATUS_INVALID_PARAMETER_4;
 
     status = ZwQueryValueKey(sKey, ParamName, KeyValuePartialInformation, &keyinfo, sizeof(KEY_VALUE_PARTIAL_INFORMATION), &bytesIO);
-    if (NT_SUCCESS(status))
-        return STATUS_BUFFER_TOO_SMALL; // The key value is empty. It should not success with zero-length buffer if there are some data;
+    if (NT_SUCCESS(status)) {
 
-    if ((status != STATUS_BUFFER_TOO_SMALL) && (status != STATUS_BUFFER_OVERFLOW))
-        return STATUS_INVALID_PARAMETER; // we got unexpected return
+#ifdef _DEBUGMSG
+
+        DbgPrint("[TSMI] TsmiReadPatchChains(QueryValueKey) empty key");
+
+#endif //_DEBUGMSG
+
+        return STATUS_BUFFER_TOO_SMALL; // The key value is empty. It should not success with zero-length buffer if there are some data;
+    }
+
+    if ((status != STATUS_BUFFER_TOO_SMALL) && (status != STATUS_BUFFER_OVERFLOW)) {
+
+#ifdef _DEBUGMSG
+
+        DbgPrint("[TSMI] TsmiReadPatchChains(QueryValueKey)=%lx\n", status);
+
+#endif //_DEBUGMSG
+
+        return status; 
+    }
 
     // bytesIO contains key value data length
     *ChainsLength = bytesIO;
@@ -240,16 +278,22 @@ NTSTATUS TsmiReadPatchChains(
         return STATUS_INSUFFICIENT_RESOURCES;
 
 #ifdef _DEBUGMSG
+
     DbgPrint("[TSMI] ChainsLength=%lx\n", *ChainsLength);
-#endif
+
+#endif //_DEBUGMSG
 
     RtlSecureZeroMemory(*ParamBuffer, bytesIO);
     status = ZwQueryValueKey(sKey, ParamName, KeyValuePartialInformation, *ParamBuffer, bytesIO, &bytesIO);
+
 #ifdef _DEBUGMSG
+
     if (NT_SUCCESS(status)) {
         TsmiListPatchChains(*ParamBuffer);
     }
-#endif
+
+#endif //_DEBUGMSG
+
     return status;
 }
 
@@ -316,41 +360,49 @@ NTSTATUS TsmiLoadParameters(
     do {
 
 #ifdef _DEBUGMSG
+
         DbgPrint("[TSMI] TsmiLoadParameters(%ws)\n", DDname);
-#endif
+#endif //_DEBUGMSG
+
         ChainsLength = 0;
         tmpChains = NULL;
         RtlInitUnicodeString(&uStr, DDname);
-        status = TsmiReadPatchChains(hKey, &uStr, &tmpChains, &ChainsLength);
-        if (NT_SUCCESS(status)) {
+        if (NT_SUCCESS(TsmiReadPatchChains(hKey, &uStr, &tmpChains, &ChainsLength))) {
             if (tmpChains != NULL) {
                 TsmiCopyPatchChainsData(&PatchChains_VBoxDD, tmpChains, ChainsLength);
                 ExFreePoolWithTag(tmpChains, TSUGUMI_TAG);
             }
         }
+        else {
+            // VBoxDD must be always patched so return error if no patch data found.
+            status = STATUS_UNSUCCESSFUL;
+            break;
+        }
+
+#ifdef _VMM_PATCH_ENABLED
 
 #ifdef _DEBUGMSG
+
         DbgPrint("[TSMI] TsmiLoadParameters(%ws)\n", VMMname);
-#endif
+
+#endif //_DEBUGMSG
+
         ChainsLength = 0;
         tmpChains = NULL;
         RtlInitUnicodeString(&uStr, VMMname);
-        status = TsmiReadPatchChains(hKey, &uStr, &tmpChains, &ChainsLength);
-        if (NT_SUCCESS(status)) {
+        if (NT_SUCCESS(TsmiReadPatchChains(hKey, &uStr, &tmpChains, &ChainsLength))) {
             if (tmpChains != NULL) {
                 TsmiCopyPatchChainsData(&PatchChains_VBoxVMM, tmpChains, ChainsLength);
                 ExFreePoolWithTag(tmpChains, TSUGUMI_TAG);
             }
         }
 
+#endif //_VMM_PATCH_ENABLED
+
     } while (cond);
 
     ZwClose(hKey);
     hKey = NULL;
-
-#ifdef _DEBUGMSG
-    DbgPrint("[TSMI] TsmiLoadParameters=%lx\n", status);
-#endif
     return status;
 }
 
@@ -387,16 +439,23 @@ NTSTATUS DevioctlDispatch(
                         g_NotifySet = TRUE;
 
 #ifdef _DEBUGMSG
+
                         DbgPrint("[TSMI] DevioctlDispatch:NotifySet=%lx\n", g_NotifySet);
-#endif
+
+#endif //_DEBUGMSG
+
                     }
                 }
             }
+
 #ifdef _DEBUGMSG
+
             else {
                 DbgPrint("[TSMI] DevioctlDispatch:Notify already installed\n");
             }
-#endif
+
+#endif //_DEBUGMSG
+
             bytesIO = g_NotifySet;
             break;
 
@@ -526,7 +585,7 @@ NTSTATUS DriverInitialize(
     }
 #ifdef _DEBUGMSG
     DbgPrint("[TSMI] DriverInitialize:NotifySet=%lx\n", g_NotifySet);
-#endif
+#endif //_DEBUGMSG
     return STATUS_SUCCESS;
 }
 
