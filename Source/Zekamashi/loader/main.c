@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.68
+*  VERSION:     1.69
 *
-*  DATE:        20 Oct 2016
+*  DATE:        23 Nov 2016
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -26,7 +26,7 @@ volatile LONG           g_lApplicationInstances = 0;
 #define TsmiVBoxDD      L"VBoxDD.dll"
 #define TsmiVBoxVMM     L"VBoxVMM.dll"
 
-#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.6.6000"
+#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.6.9.1611"
 
 TABLE_DESC              g_PatchData;
 
@@ -42,7 +42,7 @@ LOADER [/s] or [Table1] [Table2]\n\n\r\
   Example: ldr.exe vboxdd.bin vboxvmm.bin"
 
 
-#define MAXIMUM_SUPPORTED_VERSIONS 7
+#define MAXIMUM_SUPPORTED_VERSIONS 8
 TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
 
     {
@@ -65,25 +65,32 @@ TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
 
     {
         L"5.1.2",
-        TsmiPatchDataValue_5120, sizeof(TsmiPatchDataValue_5120),
-        TsmiPatchDataValueVMM_5120, sizeof(TsmiPatchDataValueVMM_5120)
+        TsmiPatchDataValue_5102, sizeof(TsmiPatchDataValue_5102),
+        TsmiPatchDataValueVMM_5102, sizeof(TsmiPatchDataValueVMM_5102)
     },
 
     {
         L"5.1.4",
-        TsmiPatchDataValue_5140, sizeof(TsmiPatchDataValue_5140),
+        TsmiPatchDataValue_5104, sizeof(TsmiPatchDataValue_5104),
         NULL, 0
     },
 
     {
         L"5.1.6",
-        TsmiPatchDataValue_5160, sizeof(TsmiPatchDataValue_5160),
+        TsmiPatchDataValue_5106, sizeof(TsmiPatchDataValue_5106),
         NULL, 0
     },
 
     {
         L"5.1.8",
-        TsmiPatchDataValue_5180, sizeof(TsmiPatchDataValue_5180),
+        TsmiPatchDataValue_5108, sizeof(TsmiPatchDataValue_5108),
+        NULL, 0
+    },
+
+
+    {
+        L"5.1.10",
+        TsmiPatchDataValue_5110, sizeof(TsmiPatchDataValue_5110),
         NULL, 0
     }
 
@@ -118,11 +125,13 @@ BOOL SetTsmiParams(
             NULL, &hRootKey, NULL);
 
         if ((lRet != ERROR_SUCCESS) || (hRootKey == NULL)) {
+            cuiPrintText(g_ConOut, TEXT("Ldr: Cannot create/open Tsugumi key"), g_ConsoleOutput, TRUE);
             break;
         }
 
         lRet = RegCreateKey(hRootKey, TsmiParamsKey, &hParamsKey);
         if ((lRet != ERROR_SUCCESS) || (hParamsKey == NULL)) {
+            cuiPrintText(g_ConOut, TEXT("Ldr: Cannot create/open Tsugumi->Parameters key"), g_ConsoleOutput, TRUE);
             break;
         }
 
@@ -130,8 +139,10 @@ BOOL SetTsmiParams(
         if ((g_PatchData.DDTablePointer) && (g_PatchData.DDTableSize > 0)) {
             lRet = RegSetValueEx(hParamsKey, TsmiVBoxDD, 0, REG_BINARY,
                 (LPBYTE)g_PatchData.DDTablePointer, g_PatchData.DDTableSize);
-            if (lRet != ERROR_SUCCESS)
+            if (lRet != ERROR_SUCCESS) {
+                cuiPrintText(g_ConOut, TEXT("Ldr: Cannot write VBoxDD patch table"), g_ConsoleOutput, TRUE);
                 break;
+            }
         }
         else {
             RegDeleteValue(hParamsKey, TsmiVBoxDD);
@@ -140,8 +151,10 @@ BOOL SetTsmiParams(
         if ((g_PatchData.VMMTablePointer) && (g_PatchData.VMMTableSize > 0)) {
             lRet = RegSetValueEx(hParamsKey, TsmiVBoxVMM, 0, REG_BINARY,
                 (LPBYTE)g_PatchData.VMMTablePointer, g_PatchData.VMMTableSize);
-            if (lRet != ERROR_SUCCESS)
+            if (lRet != ERROR_SUCCESS) {
+                cuiPrintText(g_ConOut, TEXT("Ldr: Cannot write VBoxVMM patch table"), g_ConsoleOutput, TRUE);
                 break;
+            }
         }
         else {
             RegDeleteValue(hParamsKey, TsmiVBoxVMM);
@@ -228,7 +241,7 @@ VOID SelectPatchTable(
     VOID
 )
 {
-    BOOL     cond = FALSE;
+    BOOL     cond = FALSE, bFound = FALSE;
     DWORD    dwSize;
     HKEY     hKey = NULL;
     LRESULT  lRet;
@@ -249,6 +262,7 @@ VOID SelectPatchTable(
         // If key not exists, return FALSE and loader will exit.
         //
         if ((lRet != ERROR_SUCCESS) || (hKey == NULL)) {
+            cuiPrintText(g_ConOut, TEXT("Ldr: Cannot open VirtualBox version key"), g_ConsoleOutput, TRUE);
             break;
         }
 
@@ -259,14 +273,25 @@ VOID SelectPatchTable(
         dwSize = MAX_PATH * sizeof(TCHAR);
         lRet = RegQueryValueEx(hKey, TEXT("Version"), NULL, NULL, (LPBYTE)&szBuffer, &dwSize);
         if (lRet != ERROR_SUCCESS) {
+            cuiPrintText(g_ConOut, TEXT("Ldr: Cannot query VirtualBox version"), g_ConsoleOutput, TRUE);
             break;
         }
 
         for (i = 0; i < MAXIMUM_SUPPORTED_VERSIONS; i++) {
             if (_strcmpi(g_Tables[i].lpDescription, szBuffer) == 0) {
+
+                RtlSecureZeroMemory(&szBuffer, sizeof(szBuffer));
+                _strcpy(szBuffer, TEXT("Ldr: VirtualBox compatible version: "));
+                _strcat(szBuffer, g_Tables[i].lpDescription);
+                cuiPrintText(g_ConOut, szBuffer, g_ConsoleOutput, TRUE);
                 g_PatchData = g_Tables[i];
+                bFound = TRUE;
                 break;
             }
+        }
+
+        if (bFound != TRUE) {
+            cuiPrintText(g_ConOut, TEXT("Ldr: WARNING, compatible VirtualBox version not found, using default patch table"), g_ConsoleOutput, TRUE);
         }
 
     } while (cond);
@@ -274,6 +299,7 @@ VOID SelectPatchTable(
     if (hKey) {
         RegCloseKey(hKey);
     }
+
 }
 
 /*
@@ -381,6 +407,8 @@ void VBoxLdrMain(
             WriteFile(g_ConOut, &BE, sizeof(WCHAR), &l, NULL);
         }
 
+        cuiPrintText(g_ConOut, T_PROGRAMTITLE, g_ConsoleOutput, TRUE);
+
         //
         // Check number of instances running.
         //
@@ -487,9 +515,8 @@ void VBoxLdrMain(
         }
         else {
             cuiPrintText(g_ConOut, TEXT("Ldr: Tsugumi patch table parameters set"), g_ConsoleOutput, TRUE);
-        }
-
-        SendCommand(TSUGUMI_IOCTL_REFRESH_LIST, TEXT("TSUGUMI_IOCTL_REFRESH_LIST"));
+            SendCommand(TSUGUMI_IOCTL_REFRESH_LIST, TEXT("TSUGUMI_IOCTL_REFRESH_LIST"));
+        }     
 
     } while (cond);
     cuiPrintText(g_ConOut, TEXT("Ldr: exit"), g_ConsoleOutput, TRUE);

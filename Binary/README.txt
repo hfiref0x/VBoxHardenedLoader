@@ -19,6 +19,7 @@ Loader v1.6+ support only
 5.1.4
 5.1.6
 5.1.8
+5.1.10
 
 2) Create a new vm with the following settings.
 
