@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2016
+*  (C) COPYRIGHT AUTHORS, 2014 - 2017
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.69
+*  VERSION:     1.70
 *
-*  DATE:        23 Nov 2016
+*  DATE:        23 Dec 2016
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -26,7 +26,7 @@ volatile LONG           g_lApplicationInstances = 0;
 #define TsmiVBoxDD      L"VBoxDD.dll"
 #define TsmiVBoxVMM     L"VBoxVMM.dll"
 
-#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.6.9.1611"
+#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.7.0.1612"
 
 TABLE_DESC              g_PatchData;
 
@@ -42,7 +42,7 @@ LOADER [/s] or [Table1] [Table2]\n\n\r\
   Example: ldr.exe vboxdd.bin vboxvmm.bin"
 
 
-#define MAXIMUM_SUPPORTED_VERSIONS 8
+#define MAXIMUM_SUPPORTED_VERSIONS 9
 TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
 
     {
@@ -91,6 +91,12 @@ TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
     {
         L"5.1.10",
         TsmiPatchDataValue_5110, sizeof(TsmiPatchDataValue_5110),
+        NULL, 0
+    },
+
+    {
+        L"5.1.12",
+        TsmiPatchDataValue_5112, sizeof(TsmiPatchDataValue_5112),
         NULL, 0
     }
 
@@ -516,7 +522,7 @@ void VBoxLdrMain(
         else {
             cuiPrintText(g_ConOut, TEXT("Ldr: Tsugumi patch table parameters set"), g_ConsoleOutput, TRUE);
             SendCommand(TSUGUMI_IOCTL_REFRESH_LIST, TEXT("TSUGUMI_IOCTL_REFRESH_LIST"));
-        }     
+        }
 
     } while (cond);
     cuiPrintText(g_ConOut, TEXT("Ldr: exit"), g_ConsoleOutput, TRUE);

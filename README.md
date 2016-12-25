@@ -9,7 +9,16 @@ http://www.kernelmode.info/forum/viewtopic.php?f=11&t=3478.
 
 x64 Windows 7/8/8.1/10;
 
-VirtualBox 5.0 and later versions (supported 5.0.16, 5.0.22, 5.1.0, 5.1.2, 5.1.4, 5.1.6, 5.1.8, 5.1.10);
+VirtualBox 5.0 and later versions, supported: 
++ 5.0.16, 
++ 5.0.22, 
++ 5.1.0, 
++ 5.1.2, 
++ 5.1.4, 
++ 5.1.6, 
++ 5.1.8, 
++ 5.1.10, 
++ 5.1.12;
 
 For version below VirtualBox 5.0 use older release of this loader.
 For versions 5.0.0, 5.0.2, 5.0.8, 5.0.10, 5.0.12 please use loader version 1.5.
@@ -34,4 +43,4 @@ Windows Driver Kit 8.1 U1 and later versions for driver build.
 
 # Authors
 
-(c) 2014 - 2016 VBoxHardenedLoader Project
+(c) 2014 - 2017 VBoxHardenedLoader Project
