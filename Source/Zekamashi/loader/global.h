@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2016
+*  (C) COPYRIGHT AUTHORS, 2014 - 2017
 *
-*  TITLE:       SUP.H
+*  TITLE:       GLOBAL.H
 *
-*  VERSION:     1.61
+*  VERSION:     1.71
 *
-*  DATE:        06 June 2016
+*  DATE:        03 Jan 2017
 *
 *  Common header file for the program support routines.
 *

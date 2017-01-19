@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.70
+*  VERSION:     1.71
 *
-*  DATE:        23 Dec 2016
+*  DATE:        19 Jan 2017
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -26,7 +26,7 @@ volatile LONG           g_lApplicationInstances = 0;
 #define TsmiVBoxDD      L"VBoxDD.dll"
 #define TsmiVBoxVMM     L"VBoxVMM.dll"
 
-#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.7.0.1612"
+#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.7.1.1701"
 
 TABLE_DESC              g_PatchData;
 
@@ -42,7 +42,7 @@ LOADER [/s] or [Table1] [Table2]\n\n\r\
   Example: ldr.exe vboxdd.bin vboxvmm.bin"
 
 
-#define MAXIMUM_SUPPORTED_VERSIONS 9
+#define MAXIMUM_SUPPORTED_VERSIONS 10
 TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
 
     {
@@ -97,6 +97,12 @@ TABLE_DESC g_Tables[MAXIMUM_SUPPORTED_VERSIONS] = {
     {
         L"5.1.12",
         TsmiPatchDataValue_5112, sizeof(TsmiPatchDataValue_5112),
+        NULL, 0
+    },
+
+    {
+        L"5.1.14",
+        TsmiPatchDataValue_5114, sizeof(TsmiPatchDataValue_5114),
         NULL, 0
     }
 
