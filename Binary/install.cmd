@@ -6,3 +6,4 @@ tdl.exe tsugumi.sys
 echo Run loader
 pause
 call loader.cmd
+net start vboxdrv
