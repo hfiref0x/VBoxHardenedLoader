@@ -546,6 +546,8 @@ UINT ProcessInputFile(
 
         if (SaveTable(DataBlocks, TEXT("\\output.bin"), c))
             uResult = 0;
+        else
+            uResult = (UINT)-2;
 
     } while (cond);
 
