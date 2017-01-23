@@ -390,7 +390,7 @@ void VBoxLdrMain(
     VOID
 )
 {
-    BOOL    cond = FALSE;
+    BOOL    cond = FALSE, loadVbox = FALSE;
     LONG    x;
     ULONG   l = 0, uCmd = 0;
     PVOID   DataBufferDD, DataBufferVMM;
@@ -458,6 +458,10 @@ void VBoxLdrMain(
             if (_strcmpi(szBuffer, TEXT("/s")) == 0) {
                 uCmd = TSUGUMI_IOCTL_MONITOR_STOP;
             }
+
+			if (_strcmpi(szBuffer, TEXT("/l")) == 0) {
+				loadVbox = TRUE;
+			}
 
             if (uCmd != TSUGUMI_IOCTL_MONITOR_STOP) {
                 l = 0;
@@ -532,6 +536,9 @@ void VBoxLdrMain(
 
     } while (cond);
     cuiPrintText(g_ConOut, TEXT("Ldr: exit"), g_ConsoleOutput, TRUE);
+	if (loadVbox) {
+		system("sc start vboxdrv");
+	}
     InterlockedDecrement((PLONG)&g_lApplicationInstances);
     ExitProcess(0);
 }
