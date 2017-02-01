@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2016
+*  (C) COPYRIGHT AUTHORS, 2014 - 2017
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.66
+*  VERSION:     1.80
 *
-*  DATE:        10 Aug 2016
+*  DATE:        31 Jan 2017
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -17,27 +17,16 @@
 #include <ntddk.h>
 #include "main.h"
 
-//#define _DEBUGMSG
-//#define _VMM_PATCH_ENABLED
-
 #pragma warning(disable: 6102) //"Using %s from failed call at line %s"
 
-// Synchronization mutex
-static KMUTEX      g_PatchChainsLock;
+static VBOX_PATCH g_VBoxDD;
 
 // Notify flag 
 static BOOLEAN     g_NotifySet;
 
 // Data buffer
-static PKEY_VALUE_PARTIAL_INFORMATION    PatchChains_VBoxDD = NULL;
 static const WCHAR DDname[] = L"VBoxDD.dll";
 
-#ifdef _VMM_PATCH_ENABLED
-
-static PKEY_VALUE_PARTIAL_INFORMATION    PatchChains_VBoxVMM = NULL;
-static const WCHAR VMMname[] = L"VBoxVMM.dll";
-
-#endif //_VMM_PATCH_ENABLED
 
 /*
 * TsmiHandleMemWrite
@@ -62,49 +51,75 @@ NTSTATUS TsmiHandleMemWrite(
 
     mdl = IoAllocateMdl(DestAddress, Size, FALSE, FALSE, NULL);
     if (mdl == NULL) {
+#ifdef _DEBUGMSG
+        DbgPrint("[TSMI] Failed to create MDL at write\n");
+#endif
         return STATUS_INSUFFICIENT_RESOURCES;
     }
-    if (DestAddress >= MmSystemRangeStart)
-        if (!MmIsAddressValid(DestAddress)) {
-            return STATUS_ACCESS_VIOLATION;
+
+#ifdef _SIGNED_BUILD
+    __try {
+#endif //_SIGNED_BUILD
+
+        if (DestAddress >= MmSystemRangeStart)
+            if (!MmIsAddressValid(DestAddress)) {
+#ifdef _DEBUGMSG
+                DbgPrint("[TSMI] Invalid address\n");
+#endif //_DEBUGMSG
+                return STATUS_ACCESS_VIOLATION;
+            }
+        MmProbeAndLockPages(mdl, KernelMode, IoReadAccess);
+        DestAddress = MmGetSystemAddressForMdlSafe(mdl, HighPagePriority);
+        if (DestAddress != NULL) {
+            status = MmProtectMdlSystemAddress(mdl, PAGE_EXECUTE_READWRITE);
+            __movsb((PUCHAR)DestAddress, (const UCHAR *)SrcAddress, Size);
+            MmUnmapLockedPages(DestAddress, mdl);
+            MmUnlockPages(mdl);
         }
-    MmProbeAndLockPages(mdl, KernelMode, IoReadAccess);
-    DestAddress = MmGetSystemAddressForMdlSafe(mdl, HighPagePriority);
-    if (DestAddress != NULL) {
-        status = MmProtectMdlSystemAddress(mdl, PAGE_EXECUTE_READWRITE);
-        __movsb((PUCHAR)DestAddress, (const UCHAR *)SrcAddress, Size);
-        MmUnmapLockedPages(DestAddress, mdl);
-        MmUnlockPages(mdl);
+        else {
+            status = STATUS_ACCESS_VIOLATION;
+        }
+
+#ifdef _SIGNED_BUILD
     }
-    else {
+    __except (EXCEPTION_EXECUTE_HANDLER) {
         status = STATUS_ACCESS_VIOLATION;
+#ifdef _DEBUGMSG
+        DbgPrint("[TSMI] MmProbeAndLockPages failed at write DestAddress = %p\n", DestAddress);
+#endif //_DEBUGMSG
     }
+#endif //_SIGNED_BUILD
 
     IoFreeMdl(mdl);
     return status;
 }
 
 /*
-* TsmiApplyPatch
+* TsmiPatchImage
 *
 * Purpose:
 *
 * Iterate through patch chains and apply them all.
 *
 */
-NTSTATUS TsmiApplyPatchChains(
-    _In_ PKEY_VALUE_PARTIAL_INFORMATION PatchChains,
+NTSTATUS TsmiPatchImage(
+    _In_ VBOX_PATCH *PatchInfo,
     _In_ PIMAGE_INFO ImageInfo
 )
 {
-    NTSTATUS              ntStatus = STATUS_UNSUCCESSFUL;
-    PBINARY_PATCH_BLOCK   Chains;
-    ULONG                 l = 0;
+    NTSTATUS                        ntStatus = STATUS_UNSUCCESSFUL;
+    PBINARY_PATCH_BLOCK             Chains;
+    PKEY_VALUE_PARTIAL_INFORMATION  PatchChains;
+    ULONG                           l = 0;
 
-    if (ImageInfo == NULL)
+    PAGED_CODE();
+
+    if ((ImageInfo == NULL) || (PatchInfo == NULL))
         return ntStatus;
 
-    KeWaitForSingleObject(&g_PatchChainsLock, Executive, KernelMode, FALSE, NULL);
+    KeWaitForSingleObject(&PatchInfo->Lock, Executive, KernelMode, FALSE, NULL);
+    
+    PatchChains = PatchInfo->Chains;
 
     if (PatchChains != NULL) {
         l = 0;
@@ -122,14 +137,11 @@ NTSTATUS TsmiApplyPatchChains(
         }
 
 #ifdef _DEBUGMSG
-
-        DbgPrint("[TSMI] Patch apply complete\n");
-
+        DbgPrint("[TSMI] Image patch complete\n");
 #endif //_DEBUGMSG
-
     }
 
-    KeReleaseMutex(&g_PatchChainsLock, FALSE);
+    KeReleaseMutex(&PatchInfo->Lock, FALSE);
 
     return ntStatus;
 }
@@ -162,34 +174,16 @@ VOID TsmiPsImageHandler(
         if (FullImageName->Buffer[c] == '\\')
             l = c + 1;
 
+    //
+    // Patch VBoxDD image.
+    //
     if (_wcsnicmp(&FullImageName->Buffer[l], DDname, wcslen(DDname)) == 0) {
-        if (NT_SUCCESS(TsmiApplyPatchChains(PatchChains_VBoxDD, ImageInfo))) {
-
+        if (NT_SUCCESS(TsmiPatchImage(&g_VBoxDD, ImageInfo))) {
 #ifdef _DEBUGMSG
-
             DbgPrint("[TSMI]  DD patched\n");
-
 #endif
-
         }
     }
-
-#ifdef _VMM_PATCH_ENABLED
-
-    if (_wcsnicmp(&FullImageName->Buffer[l], VMMname, wcslen(VMMname)) == 0) {
-        if (NT_SUCCESS(TsmiApplyPatchChains(PatchChains_VBoxVMM, ImageInfo))) {
-
-#ifdef _DEBUGMSG
-
-            DbgPrint("[TSMI]  MM patched\n");
-
-#endif //_DEBUGMSG
-
-        }
-    }
-
-#endif //_VMM_PATCH_ENABLED
-
 }
 
 /*
@@ -201,11 +195,13 @@ VOID TsmiPsImageHandler(
 *
 */
 VOID TsmiListPatchChains(
-    _In_ PKEY_VALUE_PARTIAL_INFORMATION PatchChains
+    _In_ KEY_VALUE_PARTIAL_INFORMATION *PatchChains
 )
 {
     ULONG                  l = 0;
     PBINARY_PATCH_BLOCK    Chains;
+
+    PAGED_CODE();
 
     DbgPrint("[TSMI] Patch chains -> %p\n", PatchChains);
 
@@ -237,62 +233,54 @@ VOID TsmiListPatchChains(
 NTSTATUS TsmiReadPatchChains(
     _In_ HANDLE sKey,
     _In_ PUNICODE_STRING ParamName,
-    _In_ PVOID *ParamBuffer,
-    _In_ ULONG *ChainsLength
+    _In_ VBOX_PATCH *PatchInfo
 )
 {
-    KEY_VALUE_PARTIAL_INFORMATION   keyinfo;
-    NTSTATUS                        status;
-    ULONG                           bytesIO = 0;
+    KEY_VALUE_PARTIAL_INFORMATION       keyinfo;
+    ULONG                               ChainsLength = 0, bytesIO;
+    NTSTATUS                            status;
 
-    if (ChainsLength == NULL)
-        return STATUS_INVALID_PARAMETER_4;
+    PAGED_CODE();
 
-    status = ZwQueryValueKey(sKey, ParamName, KeyValuePartialInformation, &keyinfo, sizeof(KEY_VALUE_PARTIAL_INFORMATION), &bytesIO);
+    if (sKey == NULL)
+        return STATUS_INVALID_PARAMETER_1;
+
+    if (ParamName == NULL)
+        return STATUS_INVALID_PARAMETER_2;
+
+    if (PatchInfo == NULL)
+        return STATUS_INVALID_PARAMETER_3;
+
+    status = ZwQueryValueKey(sKey, ParamName, KeyValuePartialInformation, &keyinfo, sizeof(KEY_VALUE_PARTIAL_INFORMATION), &ChainsLength);
     if (NT_SUCCESS(status)) {
-
-#ifdef _DEBUGMSG
-
-        DbgPrint("[TSMI] TsmiReadPatchChains(QueryValueKey) empty key");
-
-#endif //_DEBUGMSG
-
         return STATUS_BUFFER_TOO_SMALL; // The key value is empty. It should not success with zero-length buffer if there are some data;
     }
 
     if ((status != STATUS_BUFFER_TOO_SMALL) && (status != STATUS_BUFFER_OVERFLOW)) {
-
-#ifdef _DEBUGMSG
-
-        DbgPrint("[TSMI] TsmiReadPatchChains(QueryValueKey)=%lx\n", status);
-
-#endif //_DEBUGMSG
-
         return status; 
     }
 
-    // bytesIO contains key value data length
-    *ChainsLength = bytesIO;
-    *ParamBuffer = (PKEY_VALUE_PARTIAL_INFORMATION)ExAllocatePoolWithTagPriority(PagedPool, (SIZE_T)bytesIO, TSUGUMI_TAG, NormalPoolPriority);
-    if (*ParamBuffer == NULL)
+    //
+    // Allocate buffer for data with given size
+    //
+    PatchInfo->Chains = (PKEY_VALUE_PARTIAL_INFORMATION)ExAllocatePoolWithTagPriority(PagedPool,
+        (SIZE_T)ChainsLength, TSUGUMI_TAG, NormalPoolPriority);
+    if (PatchInfo->Chains == NULL)
         return STATUS_INSUFFICIENT_RESOURCES;
 
+
 #ifdef _DEBUGMSG
-
-    DbgPrint("[TSMI] ChainsLength=%lx\n", *ChainsLength);
-
+    DbgPrint("[TSMI] ChainsLength=%lx\n", ChainsLength);
 #endif //_DEBUGMSG
 
-    RtlSecureZeroMemory(*ParamBuffer, bytesIO);
-    status = ZwQueryValueKey(sKey, ParamName, KeyValuePartialInformation, *ParamBuffer, bytesIO, &bytesIO);
-
-#ifdef _DEBUGMSG
-
+    RtlSecureZeroMemory(PatchInfo->Chains, ChainsLength);
+    status = ZwQueryValueKey(sKey, ParamName, KeyValuePartialInformation, PatchInfo->Chains, ChainsLength, &bytesIO);
     if (NT_SUCCESS(status)) {
-        TsmiListPatchChains(*ParamBuffer);
-    }
-
+        PatchInfo->ChainsLength = ChainsLength;
+#ifdef _DEBUGMSG
+        TsmiListPatchChains(PatchInfo->Chains);
 #endif //_DEBUGMSG
+    }
 
     return status;
 }
@@ -306,28 +294,30 @@ NTSTATUS TsmiReadPatchChains(
 *
 */
 VOID TsmiCopyPatchChainsData(
-    _In_ PVOID *PatchChains,
-    _In_ PVOID Chains,
-    _In_ ULONG ChainsLength
+    _In_ VBOX_PATCH *Src,
+    _In_ VBOX_PATCH *Dst
 )
 {
-    if ((PatchChains == NULL) || (Chains == NULL) || (ChainsLength == 0))
+    PAGED_CODE();
+
+    if ((Src == NULL) || (Dst == NULL))
         return;
 
-    KeWaitForSingleObject(&g_PatchChainsLock, Executive, KernelMode, FALSE, NULL);
+    if ((Src->Chains == NULL) || (Src->ChainsLength == 0))
+        return;
+    
+    KeWaitForSingleObject(&Dst->Lock, Executive, KernelMode, FALSE, NULL);
 
-    if (*PatchChains != NULL) {
-        ExFreePoolWithTag(*PatchChains, TSUGUMI_TAG);
-        *PatchChains = NULL;
+    if (Dst->Chains != NULL) {
+        ExFreePoolWithTag(Dst->Chains, TSUGUMI_TAG);
+        Dst->Chains = NULL;
+        Dst->ChainsLength = 0;
     }
 
-    *PatchChains = (PVOID)ExAllocatePoolWithTagPriority(PagedPool, ChainsLength, TSUGUMI_TAG, NormalPoolPriority);
-    if (*PatchChains) {
-        RtlSecureZeroMemory(*PatchChains, ChainsLength);
-        RtlCopyMemory(*PatchChains, Chains, ChainsLength);
-    }
+    Dst->Chains = Src->Chains;
+    Dst->ChainsLength = Src->ChainsLength;
 
-    KeReleaseMutex(&g_PatchChainsLock, FALSE);
+    KeReleaseMutex(&Dst->Lock, FALSE);
 }
 
 /*
@@ -342,13 +332,14 @@ NTSTATUS TsmiLoadParameters(
     VOID
 )
 {
-    UCHAR                           cond = 0;
-    PKEY_VALUE_PARTIAL_INFORMATION  tmpChains;
-    HANDLE                          hKey = NULL;
-    NTSTATUS                        status = STATUS_UNSUCCESSFUL;
-    UNICODE_STRING                  uStr;
-    OBJECT_ATTRIBUTES               ObjectAttributes;
-    ULONG                           ChainsLength;
+    UCHAR                cond = 0;
+    HANDLE               hKey = NULL;
+    NTSTATUS             status = STATUS_UNSUCCESSFUL;
+    UNICODE_STRING       uStr;
+    OBJECT_ATTRIBUTES    ObjectAttributes;
+    VBOX_PATCH           tempPatch;
+
+    PAGED_CODE();
 
     RtlInitUnicodeString(&uStr, TSUGUMI_PARAMS);
     InitializeObjectAttributes(&ObjectAttributes, &uStr, OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, NULL, NULL);
@@ -358,20 +349,13 @@ NTSTATUS TsmiLoadParameters(
         return status;
 
     do {
+        tempPatch.Chains = NULL;
+        tempPatch.ChainsLength = 0;
 
-#ifdef _DEBUGMSG
-
-        DbgPrint("[TSMI] TsmiLoadParameters(%ws)\n", DDname);
-#endif //_DEBUGMSG
-
-        ChainsLength = 0;
-        tmpChains = NULL;
         RtlInitUnicodeString(&uStr, DDname);
-        if (NT_SUCCESS(TsmiReadPatchChains(hKey, &uStr, &tmpChains, &ChainsLength))) {
-            if (tmpChains != NULL) {
-                TsmiCopyPatchChainsData(&PatchChains_VBoxDD, tmpChains, ChainsLength);
-                ExFreePoolWithTag(tmpChains, TSUGUMI_TAG);
-            }
+        status = TsmiReadPatchChains(hKey, &uStr, &tempPatch);
+        if (NT_SUCCESS(status)) {
+            TsmiCopyPatchChainsData(&tempPatch, &g_VBoxDD);
         }
         else {
             // VBoxDD must be always patched so return error if no patch data found.
@@ -379,30 +363,9 @@ NTSTATUS TsmiLoadParameters(
             break;
         }
 
-#ifdef _VMM_PATCH_ENABLED
-
-#ifdef _DEBUGMSG
-
-        DbgPrint("[TSMI] TsmiLoadParameters(%ws)\n", VMMname);
-
-#endif //_DEBUGMSG
-
-        ChainsLength = 0;
-        tmpChains = NULL;
-        RtlInitUnicodeString(&uStr, VMMname);
-        if (NT_SUCCESS(TsmiReadPatchChains(hKey, &uStr, &tmpChains, &ChainsLength))) {
-            if (tmpChains != NULL) {
-                TsmiCopyPatchChainsData(&PatchChains_VBoxVMM, tmpChains, ChainsLength);
-                ExFreePoolWithTag(tmpChains, TSUGUMI_TAG);
-            }
-        }
-
-#endif //_VMM_PATCH_ENABLED
-
     } while (cond);
 
     ZwClose(hKey);
-    hKey = NULL;
     return status;
 }
 
@@ -425,11 +388,17 @@ NTSTATUS DevioctlDispatch(
 
     UNREFERENCED_PARAMETER(DeviceObject);
 
+    PAGED_CODE();
+
     stack = IoGetCurrentIrpStackLocation(Irp);
 
     if (stack != NULL) {
         switch (stack->Parameters.DeviceIoControl.IoControlCode) {
         case TSUGUMI_IOCTL_REFRESH_LIST:
+
+#ifdef _DEBUGMSG
+            DbgPrint("[TSMI] DevioctlDispatch:TSUGUMI_IOCTL_REFRESH_LIST");
+#endif //_DEBUGMSG
 
             status = TsmiLoadParameters();
             if (g_NotifySet == FALSE) {
@@ -439,9 +408,7 @@ NTSTATUS DevioctlDispatch(
                         g_NotifySet = TRUE;
 
 #ifdef _DEBUGMSG
-
                         DbgPrint("[TSMI] DevioctlDispatch:NotifySet=%lx\n", g_NotifySet);
-
 #endif //_DEBUGMSG
 
                     }
@@ -449,11 +416,9 @@ NTSTATUS DevioctlDispatch(
             }
 
 #ifdef _DEBUGMSG
-
             else {
                 DbgPrint("[TSMI] DevioctlDispatch:Notify already installed\n");
             }
-
 #endif //_DEBUGMSG
 
             bytesIO = g_NotifySet;
@@ -463,10 +428,18 @@ NTSTATUS DevioctlDispatch(
 
             bytesIO = 0;
 
+#ifdef _DEBUGMSG
+            DbgPrint("[TSMI] DevioctlDispatch:TSUGUMI_IOCTL_MONITOR_STOP");
+#endif //_DEBUGMSG
+
+
             if (g_NotifySet) {
                 status = PsRemoveLoadImageNotifyRoutine(TsmiPsImageHandler);
                 if (NT_SUCCESS(status)) {
                     g_NotifySet = FALSE;
+#ifdef _DEBUGMSG
+                    DbgPrint("[TSMI] DevioctlDispatch:NotifySet=%lx\n", g_NotifySet);
+#endif //_DEBUGMSG
                     bytesIO = 1;
                 }
             }
@@ -500,6 +473,8 @@ NTSTATUS UnsupportedDispatch(
 )
 {
     UNREFERENCED_PARAMETER(DeviceObject);
+    
+    PAGED_CODE();
 
     Irp->IoStatus.Status = STATUS_NOT_SUPPORTED;
     Irp->IoStatus.Information = 0;
@@ -522,11 +497,53 @@ NTSTATUS CreateCloseDispatch(
 {
     UNREFERENCED_PARAMETER(DeviceObject);
 
+    PAGED_CODE();
+
     Irp->IoStatus.Status = STATUS_SUCCESS;
     Irp->IoStatus.Information = 0;
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
     return STATUS_SUCCESS;
 }
+
+/*
+* DriverUnload
+*
+* Purpose:
+*
+* Driver unload procedure.
+*
+*/
+VOID DriverUnload(
+    _In_  struct _DRIVER_OBJECT *DriverObject
+)
+{
+    PAGED_CODE();
+
+    UNICODE_STRING  SymLink;
+
+#ifdef _DEBUGMSG
+    DbgPrint("[TSMI] Unload, DrvObj = %p\n", DriverObject);
+#endif
+
+    if (g_NotifySet) {
+        PsRemoveLoadImageNotifyRoutine(TsmiPsImageHandler);
+    }
+
+    KeWaitForSingleObject(&g_VBoxDD.Lock, Executive, KernelMode, FALSE, NULL);
+
+    if (g_VBoxDD.Chains) {
+        ExFreePoolWithTag(g_VBoxDD.Chains, TSUGUMI_TAG);
+        g_VBoxDD.Chains = NULL;
+        g_VBoxDD.ChainsLength = 0;
+    }
+
+    KeReleaseMutex(&g_VBoxDD.Lock, FALSE);
+
+    RtlInitUnicodeString(&SymLink, TSUGUMI_SYM_LINK);
+    IoDeleteSymbolicLink(&SymLink);
+    IoDeleteDevice(DriverObject->DeviceObject);
+}
+
 
 /*
 * DriverInitialize
@@ -546,10 +563,12 @@ NTSTATUS DriverInitialize(
     PDEVICE_OBJECT  devobj;
     ULONG           t;
 
-    //RegistryPath is NULL
+    //RegistryPath is unused
     UNREFERENCED_PARAMETER(RegistryPath);
 
-    KeInitializeMutex(&g_PatchChainsLock, 0);
+    g_VBoxDD.Chains = NULL;
+    g_VBoxDD.ChainsLength = 0;
+    KeInitializeMutex(&g_VBoxDD.Lock, 0);
 
     RtlInitUnicodeString(&DevName, TSUGUMI_DEV_OBJECT);
     status = IoCreateDevice(DriverObject, 0, &DevName, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, TRUE, &devobj);
@@ -571,9 +590,13 @@ NTSTATUS DriverInitialize(
     DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = &DevioctlDispatch;
     DriverObject->MajorFunction[IRP_MJ_CREATE] = &CreateCloseDispatch;
     DriverObject->MajorFunction[IRP_MJ_CLOSE] = &CreateCloseDispatch;
-    DriverObject->DriverUnload = NULL;
 
+#ifndef _SIGNED_BUILD
+    DriverObject->DriverUnload = NULL;
     devobj->Flags &= ~DO_DEVICE_INITIALIZING;
+#else
+    DriverObject->DriverUnload = &DriverUnload;
+#endif
 
     g_NotifySet = FALSE;
     status = TsmiLoadParameters();
@@ -583,9 +606,6 @@ NTSTATUS DriverInitialize(
             g_NotifySet = TRUE;
         }
     }
-#ifdef _DEBUGMSG
-    DbgPrint("[TSMI] DriverInitialize:NotifySet=%lx\n", g_NotifySet);
-#endif //_DEBUGMSG
     return STATUS_SUCCESS;
 }
 
@@ -602,6 +622,7 @@ NTSTATUS DriverEntry(
     _In_  PUNICODE_STRING RegistryPath
 )
 {
+#ifndef _SIGNED_BUILD
     UNICODE_STRING  drvName;
 
     UNREFERENCED_PARAMETER(DriverObject);
@@ -609,4 +630,7 @@ NTSTATUS DriverEntry(
 
     RtlInitUnicodeString(&drvName, TSUGUMI_DRV_OBJECT);
     return IoCreateDriver(&drvName, &DriverInitialize);
+#else
+    return DriverInitialize(DriverObject, RegistryPath);
+#endif
 }

@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2016
+*  (C) COPYRIGHT AUTHORS, 2016 - 2017
 *
 *  TITLE:       MAIN.H
 *
-*  VERSION:     1.61
+*  VERSION:     1.80
 *
-*  DATE:        06 June 2016
+*  DATE:        31 Jan 2017
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -17,12 +17,24 @@
 
 #pragma once
 
+typedef struct _VBOX_PATCH {
+    KMUTEX Lock; // Synchronization mutex
+    PKEY_VALUE_PARTIAL_INFORMATION Chains; // bufer
+    ULONG_PTR ChainsLength; // buffer length in bytes
+} VBOX_PATCH, *PVBOX_PATCH;
+
+typedef struct _BINARY_PATCH_BLOCK {
+    ULONG	VirtualOffset;
+    UCHAR	DataLength;
+    UCHAR	Data[1];
+} BINARY_PATCH_BLOCK, *PBINARY_PATCH_BLOCK;
+
 NTKERNELAPI
 NTSTATUS
 IoCreateDriver(
-	IN PUNICODE_STRING DriverName, OPTIONAL
-	IN PDRIVER_INITIALIZE InitializationFunction
-	);
+    IN PUNICODE_STRING DriverName, OPTIONAL
+    IN PDRIVER_INITIALIZE InitializationFunction
+);
 
 _Dispatch_type_(IRP_MJ_DEVICE_CONTROL)
 DRIVER_DISPATCH DevioctlDispatch;
@@ -62,27 +74,37 @@ DRIVER_DISPATCH UnsupportedDispatch;
 
 DRIVER_INITIALIZE   DriverEntry;
 DRIVER_INITIALIZE   DriverInitialize;
+DRIVER_UNLOAD       DriverUnload;
 NTSTATUS            TsmiHandleMemWrite(_In_ PVOID SrcAddress, _In_ PVOID DestAddress, _In_ ULONG Size);
-VOID                TsmiPsImageHandler(_In_ PUNICODE_STRING FullImageName, _In_ HANDLE ProcessId, _In_ PIMAGE_INFO ImageInfo);
 NTSTATUS            TsmiLoadParameters(VOID);
+NTSTATUS            TsmiPatchImage(_In_ VBOX_PATCH *PatchInfo, _In_ PIMAGE_INFO ImageInfo);
+NTSTATUS            TsmiReadPatchChains(_In_ HANDLE sKey, _In_ PUNICODE_STRING ParamName, _In_ VBOX_PATCH *PatchInfo);
+VOID                TsmiPsImageHandler(_In_ PUNICODE_STRING FullImageName, _In_ HANDLE ProcessId, _In_ PIMAGE_INFO ImageInfo);
+VOID                TsmiListPatchChains(_In_ KEY_VALUE_PARTIAL_INFORMATION *PatchChains);
+VOID                TsmiCopyPatchChainsData(_In_ VBOX_PATCH *Src, _In_ VBOX_PATCH *Dst);
 
 #pragma alloc_text(INIT, DriverEntry)
-#pragma alloc_text(INIT, TsmiLoadParameters)
+#pragma alloc_text(INIT, DriverInitialize)
+#pragma alloc_text(PAGE, TsmiLoadParameters)
 #pragma alloc_text(PAGE, TsmiHandleMemWrite)
 #pragma alloc_text(PAGE, TsmiPsImageHandler)
+#pragma alloc_text(PAGE, TsmiPatchImage)
+#pragma alloc_text(PAGE, TsmiCopyPatchChainsData)
+#pragma alloc_text(PAGE, TsmiListPatchChains)
+#pragma alloc_text(PAGE, TsmiReadPatchChains)
+#pragma alloc_text(PAGE, DevioctlDispatch)
+#pragma alloc_text(PAGE, CreateCloseDispatch)
+#pragma alloc_text(PAGE, UnsupportedDispatch)
+#pragma alloc_text(PAGE, DriverUnload)
 
 #define TSUGUMI_IOCTL_REFRESH_LIST    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0700, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
 #define TSUGUMI_IOCTL_MONITOR_STOP    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0701, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
-
-typedef struct _BINARY_PATCH_BLOCK {
-	ULONG	VirtualOffset;
-	UCHAR	DataLength;
-	UCHAR	Data[1];
-} BINARY_PATCH_BLOCK, *PBINARY_PATCH_BLOCK;
 
 #define TSUGUMI_TAG             'imsT'
 #define BLOCK_DATA_OFFSET       (ULONG_PTR)(&((PBINARY_PATCH_BLOCK)0)->Data)
 #define TSUGUMI_DRV_OBJECT      L"\\Driver\\TsmiDrv"
 #define TSUGUMI_DEV_OBJECT      L"\\Device\\Tsugumi"
 #define TSUGUMI_SYM_LINK        L"\\DosDevices\\Tsugumi"
-#define TSUGUMI_PARAMS          L"\\REGISTRY\\MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tsugumi\\Parameters"
+#define TSUGUMI_PARAMS          L"\\REGISTRY\\MACHINE\\SOFTWARE\\Tsugumi\\Parameters"
+
+#pragma warning(disable: 6320) // exception-filter expression is the constant EXCEPTION_EXECUTE_HANDLER

@@ -4,9 +4,9 @@
 *
 *  TITLE:       GLOBAL.H
 *
-*  VERSION:     1.71
+*  VERSION:     1.80
 *
-*  DATE:        03 Jan 2017
+*  DATE:        30 Jan 2017
 *
 *  Common header file for the program support routines.
 *
@@ -42,7 +42,14 @@
 #include "minirtl\cmdline.h"
 #include "sup.h"
 #include "cui.h"
+#include "patterns.h"
+#include "instdrv.h"
 
 #define TSUGUMI_IOCTL_REFRESH_LIST    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0700, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
 #define TSUGUMI_IOCTL_MONITOR_STOP    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0701, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
 #define TSUGUMI_SYM_LINK              L"\\\\.\\Tsugumi"
+#define TSUGUMI_DRV_NAME              L"Tsugumi.sys"
+#define TSUGUMI_DISP_NAME             L"Tsugumi"
+
+extern HANDLE g_ConOut;
+extern BOOL g_ConsoleOutput;

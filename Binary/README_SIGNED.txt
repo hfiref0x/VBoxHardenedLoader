@@ -1,4 +1,4 @@
-Installation and use.
+Installation and use of signed loader.
 
 1) Install supported VirtualBox version.
  
@@ -50,21 +50,19 @@ Before running scripts make sure vmscfgdir variable inside points to directory w
 
 4) Install Tsugumi monitor driver (perform real time VirtualBox memory patch).
 
-Run from elevated command prompt
-
-tdl.exe tsugumi.sys
+Make sure Tsugumi.sys driver file is in the same directory as loader.exe
 
 Run from elevated command prompt
 
 loader.exe
 
-loader will generate patch data for your VirtualBox installed version, write it to the registry, and notify monitoring driver about new data. That all, now you can run your VM.
+loader will generate patch data for your VirtualBox installed version, write it to the registry, load monitoring driver (using Service Control Manager) and notify driver about new data. That all, now you can run your VM.
 
-If you want to stop monitor driver, without doing system reboot: run loader elevated with command line parameter /s (e.g. loader.exe /s). This will disable Tsugumi monitoring and allow you to use VM without dlls patch. Run loader again to start monitoring (see above).
+If you want to stop real time patching: run loader elevated with command line parameter /s (e.g. loader.exe /s). This will disable Tsugumi monitoring and allow you to use VM without dlls patch. Run loader again to start monitoring (see above).
 
 DO NOT INSTALL VBOX ADDITIONS, this will ruin everything and there is NO WORKAROUND for this.
 
-Note: tsugumi.sys will be unloaded ONLY at system reboot. So if you plan update VirtualBox better do reboot after update.
+Note: Once installed by loader Tsugumi.sys will accept net/sc commands, e.g. you can unload it with "net stop tsugumi" or load it again without using loader.
 
 5) EFI Note
 

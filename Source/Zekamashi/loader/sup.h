@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2016
+*  (C) COPYRIGHT AUTHORS, 2014 - 2017
 *
 *  TITLE:       SUP.H
 *
-*  VERSION:     1.50
+*  VERSION:     1.80
 *
-*  DATE:        04 Mar 2016
+*  DATE:        01 Feb 2017
 *
 *  Common header file for the program support routines.
 *
@@ -33,3 +33,7 @@ PVOID supGetSystemInfo(
 BOOL supProcessExist(
 	_In_ LPWSTR lpProcessName
 	);
+
+BOOL supLoadDeviceDriver(
+    VOID
+);

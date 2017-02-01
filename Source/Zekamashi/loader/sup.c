@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2016
+*  (C) COPYRIGHT AUTHORS, 2014 - 2017
 *
 *  TITLE:       SUP.C
 *
-*  VERSION:     1.50
+*  VERSION:     1.80
 *
-*  DATE:        04 Mar 2016
+*  DATE:        01 Feb 2017
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -218,4 +218,49 @@ BOOL supProcessExist(
 		HeapFree(GetProcessHeap(), 0, ProcessList);
 	}
 	return bResult;
+}
+
+/*
+* supLoadDeviceDriver
+*
+* Purpose:
+*
+* Load tsugumi.sys from current directory.
+*
+*/
+BOOL supLoadDeviceDriver(
+    VOID
+)
+{
+    BOOL        bResult = FALSE, bCond = FALSE;
+    SC_HANDLE   schSCManager = NULL;
+    DWORD       cch;
+    TCHAR       szFile[MAX_PATH * 2], szLog[MAX_PATH * 3];
+
+    do {
+
+        schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+        if (schSCManager == NULL)
+            break;
+
+        RtlSecureZeroMemory(szFile, sizeof(szFile));
+        cch = GetCurrentDirectory(MAX_PATH, szFile);
+        if ((cch != 0) && (cch < MAX_PATH)) {
+            _strcat(szFile, TEXT("\\"));
+            _strcat(szFile, TSUGUMI_DRV_NAME);    
+
+            _strcpy(szLog, TEXT("Ldr: Loading Tsugumi Monitor -> "));
+            _strcat(szLog, szFile);
+            cuiPrintText(g_ConOut, szLog, g_ConsoleOutput, TRUE);
+
+            scmInstallDriver(schSCManager, TSUGUMI_DISP_NAME, szFile);
+            bResult = scmStartDriver(schSCManager, TSUGUMI_DISP_NAME);
+        }
+
+    } while (bCond);
+
+    if (schSCManager != NULL)
+        CloseServiceHandle(schSCManager);
+
+    return bResult;
 }

@@ -54,12 +54,15 @@
     <ClCompile Include="minirtl\ultohex.c">
       <Filter>minirtl</Filter>
     </ClCompile>
+    <ClCompile Include="instdrv.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="patterns.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="tables.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="sup.h">
@@ -82,6 +85,12 @@
     </ClInclude>
     <ClInclude Include="minirtl\rtltypes.h">
       <Filter>minirtl</Filter>
+    </ClInclude>
+    <ClInclude Include="instdrv.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="patterns.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

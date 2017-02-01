@@ -45,8 +45,6 @@
 #include "cui.h"
 #include "patterns.h"
 
-#define NUMBER_OF_PATCHES_DD 18
-
 typedef struct _BINARY_PATCH_BLOCK {
     ULONG	VirtualOffset;
     UCHAR	DataLength;
