@@ -3,7 +3,7 @@
 ## VirtualBox Hardened VM detection mitigation loader
 
 For step by step guide further info see
-http://www.kernelmode.info/forum/viewtopic.php?f=11&t=3478.
+https://github.com/hfiref0x/VBoxHardenedLoader/blob/master/Binary/install.md
 
 # System Requirements
 
