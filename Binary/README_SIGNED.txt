@@ -62,7 +62,7 @@ If you want to stop real time patching: run loader elevated with command line pa
 
 DO NOT INSTALL VBOX ADDITIONS, this will ruin everything and there is NO WORKAROUND for this.
 
-Note: Once installed by loader Tsugumi.sys will accept net/sc commands, e.g. you can unload it with "net stop tsugumi" or load it again without using loader.
+Note: Once installed by loader Tsugumi.sys will accept net/sc commands, e.g. you can unload it with "net stop tsugumi" or load it again without using loader "net start tsugumi".
 
 5) EFI Note
 
@@ -78,4 +78,4 @@ f) Run VirtualBox.
 please see comments in install.cmd, loader.cmd before running them.
 
 Last update
-01/Feb/17
+07/Mar/17
