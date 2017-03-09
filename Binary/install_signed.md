@@ -9,7 +9,6 @@ Contents:
  * Using batch script to apply fake VM system information
  * Loading monitoring driver for load-in-memory VM dll patch
   
-  
   * Warning: VirtualBox Additions 
   * Appendix: Managing monitoring driver
   * Appendix: Using EFI VM
