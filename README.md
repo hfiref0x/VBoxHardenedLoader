@@ -3,7 +3,12 @@
 ## VirtualBox Hardened VM detection mitigation loader
 
 For step by step guide further info see
+
 https://github.com/hfiref0x/VBoxHardenedLoader/blob/master/Binary/install.md
+
+If you compiled signed version of loader and driver 
+
+https://github.com/hfiref0x/VBoxHardenedLoader/blob/master/Binary/install_signed.md
 
 # System Requirements
 
