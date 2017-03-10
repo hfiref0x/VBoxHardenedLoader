@@ -85,10 +85,13 @@ Save https://github.com/hfiref0x/VBoxHardenedLoader/tree/master/Binary folder to
 
 Now important part. Select script to work with it next depending on your VM configuration.
 
-hidevm_ahci script is for VM with SATA/AHCI controller and classical BIOS 
-hidevm_ide script is for VM with IDE controller and classical BIOS
-hidevm_efiahci script is for VM with SATA/AHCI controller and EFI
-hidevm_efiide script is for VM with IDE controller and EFI
+> hidevm_ahci is for VM with SATA/AHCI controller and classical BIOS
+
+> hidevm_ide is for VM with IDE controller and classical BIOS
+
+> hidevm_efiahci is for VM with SATA/AHCI controller and EFI
+
+> hidevm_efiide is for VM with IDE controller and EFI
 
 If you plan to use EFI VM see "Appendix: Using EFI VM" before doing any further steps.
 
