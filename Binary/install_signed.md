@@ -9,9 +9,10 @@ Contents:
  * Using batch script to apply fake VM system information
  * Loading monitoring driver for load-in-memory VM dll patch
  * Warning: VirtualBox Additions 
- * Appendix: Managing monitoring driver
- * Appendix: Using EFI VM
- * Appendix: Uninstalling VirtualBox loader
+ * Appendix A: Managing monitoring driver
+ * Appendix B: Using EFI VM
+ * Appendix C: Uninstalling VirtualBox loader
+ * Appendix D: Updating VirtualBox
   
 
 ### Step 1. Installing VirtualBox
@@ -43,7 +44,7 @@ After VM (vm0 is our case) created, open it setting and do some changes.
 
 #### System
 
-On "Motherboard" tab ensure Enable I/O API is turned on. If you plan to use EFI please read Appendix: Using EFI VM.
+On "Motherboard" tab ensure Enable I/O API is turned on. If you plan to use EFI please read Appendix B: Using EFI VM.
 
 <img src="https://raw.githubusercontent.com/hfiref0x/VBoxHardenedLoader/master/Binary/help/4_settings_mb.png" />
 
@@ -93,7 +94,7 @@ Now important part. Select script to work with it next depending on your VM conf
 
 > hidevm_efiide is for VM with IDE controller and EFI
 
-If you plan to use EFI VM see "Appendix: Using EFI VM" before doing any further steps.
+If you plan to use EFI VM see "Appendix B: Using EFI VM" before doing any further steps.
 
 In our example we created VM without EFI support and with SATA/AHCI controller so we will use hidevm_ahci script. Open it with notepad and change the following lines: 
 
@@ -136,14 +137,14 @@ Run loader.exe without parameters to load monitoring driver and configure it.
 
 Note: that on screenshot use different directory other than in our guide. Upon successful execution you will see here your directory name of course.
 
-Done, monitoring driver loaded and configured. Monitoring driver registerd in system as kernel mode service so it can be managed by standard Windows commands like "net" or "sc", for more information see "Appendix: Managing monitoring driver"
+Done, monitoring driver loaded and configured. Monitoring driver registerd in system as kernel mode service so it can be managed by standard Windows commands like "net" or "sc", for more information see "Appendix A: Managing monitoring driver"
 
 
-#### Warning: VirtualBox Additions
+## Warning: VirtualBox Additions
 
 Do not install VirtualBox Additions! This will ruin everything and there is NO workaround for this.
 
-### Appendix: Managing monitoring driver
+### Appendix A: Managing monitoring driver
 
 List of available loader command on screenshot below:
 
@@ -160,7 +161,7 @@ Use
 
 to start and stop monitoring driver respectively. The "sc" tool will work too.
 
-#### Appendix: Using EFI VM
+### Appendix B: Using EFI VM
 
 During Step 3. 
 
@@ -168,7 +169,7 @@ During Step 3.
 * Replace VBoxEFI64.fd in VirtualBox directory with it patched version from VBoxLdr\data directory. Rename file from it to VBoxEFI64.fd
 * Use hidevm_efiahci (AHCI controller mode) or hidevm_efiide (IDE controller mode) for your EFI VM
 
-#### Appendix: Uninstalling VirtualBox loader
+### Appendix C: Uninstalling VirtualBox loader
 
 If monitoring driver loaded - reboot Windows. Delete VBoxLdr folder. Open regedit and delete keys 
 
@@ -179,3 +180,7 @@ If monitoring driver loaded - reboot Windows. Delete VBoxLdr folder. Open regedi
 if present.
 
 If you used patched EFI module then restore VBoxEFI64.fd file from backup otherwise VirtualBox will be unable to work with EFI VM's.
+
+### Appendix D: Updating VirtualBox
+
+Scenario: you decided update VirtualBox without clean reinstall and rebooting your PC. Will the loader work with new version? Yes it will, but you need re-run loader.exe in elevated command prompt to update patch information for new version of VirtualBox dynamic link library VBoxDD.dll. Close VirtualBox if it opened. Open command line prompt elevated, change current directory to VBoxLdr and run loader.exe from it.
