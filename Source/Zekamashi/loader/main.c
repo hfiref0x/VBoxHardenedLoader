@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.80
+*  VERSION:     1.81
 *
-*  DATE:        31 Jan 2017
+*  DATE:        20 Mar 2017
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -23,12 +23,12 @@ volatile LONG           g_lApplicationInstances = 0;
 
 HANDLE     g_ConOut = NULL;
 BOOL       g_ConsoleOutput = FALSE;
-WCHAR      BE = 0xFEFF;
+WCHAR      g_BE = 0xFEFF;
 
 #define TsmiParamsKey   L"Parameters"
 #define TsmiVBoxDD      L"VBoxDD.dll"
 
-#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.8.0.1702"
+#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.8.1.2103"
 
 TABLE_DESC              g_PatchData = { NULL, 0 };
 
@@ -119,9 +119,11 @@ PVOID FetchCustomPatchData(
     _Inout_opt_ PDWORD pdwPatchDataSize
 )
 {
+    DWORD   dwFileSize;
     HANDLE  hFile;
-    DWORD   dwSize;
     PVOID   DataBuffer = NULL;
+
+    LARGE_INTEGER FileSize;
 
     //
     // Validate input parameter.
@@ -139,16 +141,19 @@ PVOID FetchCustomPatchData(
     //
     // Get file size for buffer, allocate it and read data.
     //
-    dwSize = GetFileSize(hFile, NULL);
-    if (dwSize > 0 && dwSize <= 4096) {
-        DataBuffer = (PVOID)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwSize);
-        if (DataBuffer != NULL) {
+    RtlSecureZeroMemory(&FileSize, sizeof(LARGE_INTEGER));
+    if (GetFileSizeEx(hFile, &FileSize)) {
+        dwFileSize = FileSize.LowPart;
+        if (dwFileSize > 0 && dwFileSize <= 4096) {
+            DataBuffer = (PVOID)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwFileSize);
+            if (DataBuffer != NULL) {
 
-            if (ReadFile(hFile, DataBuffer, dwSize, &dwSize, NULL)) {
+                if (ReadFile(hFile, DataBuffer, dwFileSize, &dwFileSize, NULL)) {
 
-                // Check if optional parameter is set and return data size on true.
-                if (pdwPatchDataSize != NULL) {
-                    *pdwPatchDataSize = dwSize;
+                    // Check if optional parameter is set and return data size on true.
+                    if (pdwPatchDataSize != NULL) {
+                        *pdwPatchDataSize = dwFileSize;
+                    }
                 }
             }
         }
@@ -204,7 +209,7 @@ BOOL CreatePatchTable(
         cch = ExpandEnvironmentStrings(TEXT("%temp%\\"), szTempFile, MAX_PATH);
         if ((cch != 0) && (cch < MAX_PATH)) {
             _strcat(szTempFile, L"nyan.dll");
-            if (CopyFile(szBuffer, szTempFile, FALSE) != TRUE)
+            if (CopyFile(szBuffer, szTempFile, FALSE) == FALSE)
                 break;
 
             g_PatchData.DDTablePointer = NULL;
@@ -213,7 +218,7 @@ BOOL CreatePatchTable(
                 bResult = TRUE;
 
             DeleteFile(szTempFile);
-        }        
+        }
 
     } while (cond);
 
@@ -322,7 +327,7 @@ void VBoxLdrMain(
         SetConsoleTitle(T_PROGRAMTITLE);
         SetConsoleMode(g_ConOut, ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_OUTPUT);
         if (g_ConsoleOutput == FALSE) {
-            WriteFile(g_ConOut, &BE, sizeof(WCHAR), &l, NULL);
+            WriteFile(g_ConOut, &g_BE, sizeof(WCHAR), &l, NULL);
         }
 
         cuiPrintText(g_ConOut, T_PROGRAMTITLE, g_ConsoleOutput, TRUE);
@@ -384,9 +389,9 @@ void VBoxLdrMain(
         //
         // Check if custom patch table present. If not - attempt to create own. Exit on failure.
         //
-        if (bFound != TRUE) {
+        if (bFound == FALSE) {
             bFound = CreatePatchTable();
-            if (bFound != TRUE) {
+            if (bFound == FALSE) {
                 cuiPrintText(g_ConOut, TEXT("\r\nLdr: Could not load patch table"), g_ConsoleOutput, TRUE);
                 break;
             }
@@ -404,7 +409,7 @@ void VBoxLdrMain(
             break;
         }
 #endif
-       
+
         if (!SetTsmiParams()) {
             cuiPrintText(g_ConOut, TEXT("Ldr: Cannot write Tsugumi settings"), g_ConsoleOutput, TRUE);
             break;
@@ -412,7 +417,7 @@ void VBoxLdrMain(
         else {
             cuiPrintText(g_ConOut, TEXT("Ldr: Tsugumi patch table parameters set"), g_ConsoleOutput, TRUE);
         }
-        
+
         //
         // Load signed Tsugumi.sys, otherwise we expect TDL already loaded unsigned driver.
         //

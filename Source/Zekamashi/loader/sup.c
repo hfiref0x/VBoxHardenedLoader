@@ -4,9 +4,9 @@
 *
 *  TITLE:       SUP.C
 *
-*  VERSION:     1.80
+*  VERSION:     1.81
 *
-*  DATE:        01 Feb 2017
+*  DATE:        20 Mar 2017
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -214,9 +214,7 @@ BOOL supProcessExist(
 
 	} while (cond);
 
-	if (ProcessList != NULL) {
-		HeapFree(GetProcessHeap(), 0, ProcessList);
-	}
+	HeapFree(GetProcessHeap(), 0, ProcessList);
 	return bResult;
 }
 

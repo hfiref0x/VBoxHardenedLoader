@@ -129,7 +129,7 @@ Close VirtualBox if it opened.
 Open elevated command line prompt. Run cmd.exe as admin and switch current directory to C:\VBoxLdr (or where you saved Binary folder). 
 
 ##### RED ALERT
-> Both driver and loader MUST be signed with valid certificate allowing loading code to kernel mode. Note that signed version of monitoring driver is INCOMPATIBLE with TDL and attempt to load such driver using TDL will result in BSOD. Singed loader MUST operate with signed driver and unsigned loader MUST operate with unsigned driver.
+> Both driver and loader MUST be signed with valid certificate allowing loading code to kernel mode. Note that signed version of monitoring driver is INCOMPATIBLE with TDL and attempt to load such driver using TDL will result in BSOD. Signed loader MUST operate with signed driver and unsigned loader MUST operate with unsigned driver.
 
 Run loader.exe without parameters to load monitoring driver and configure it.
 

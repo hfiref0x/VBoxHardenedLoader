@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2016
+*  (C) COPYRIGHT AUTHORS, 2016 - 2017
 *
 *  TITLE:       CUI.C
 *
-*  VERSION:     1.00
+*  VERSION:     1.01
 *
-*  DATE:        18 Jan 2016
+*  DATE:        20 Mar 2017
 *
 *  Console output.
 *
@@ -53,7 +53,7 @@ VOID cuiPrintText(
 
 		consoleIO = _strlen(Buffer);
 
-		if (ConsoleOutputEnabled == TRUE) {
+		if (ConsoleOutputEnabled != FALSE) {
 			WriteConsole(hOutConsole, Buffer, (DWORD)consoleIO, &bytesIO, NULL);
 		}
 		else {

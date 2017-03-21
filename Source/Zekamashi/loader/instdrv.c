@@ -4,9 +4,9 @@
 *
 *  TITLE:       INSTDRV.C
 *
-*  VERSION:     1.80
+*  VERSION:     1.81
 *
-*  DATE:        01 Feb 2017
+*  DATE:        20 Mar 2017
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -154,7 +154,7 @@ BOOL scmStopDriver(
         SetLastError(0);
 
         ret = ControlService(schService, SERVICE_CONTROL_STOP, &serviceStatus);
-        if (ret == TRUE)
+        if (ret != FALSE)
             break;
 
         if (GetLastError() != ERROR_DEPENDENT_SERVICES_RUNNING)
