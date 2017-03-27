@@ -110,7 +110,9 @@ In our example we will leave vboxman as is, because we didn't changed VirtualBox
 
 > set vboxman="C:\Program Files\Oracle\VirtualBox\vboxmanage.exe"
 >
-> set vmscfgdir=C:\VBoxLdr\data
+> set vmscfgdir=C:\VBoxLdr\data\
+
+Note the backslash at the end of vmscfgdir.
 
 After that save script changes.
 
