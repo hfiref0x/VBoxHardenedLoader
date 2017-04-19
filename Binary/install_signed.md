@@ -167,9 +167,9 @@ to start and stop monitoring driver respectively. The "sc" tool will work too.
 
 During Step 3. 
 
-* Make backup copy of original VBoxEFI64.fd in VirtualBox directory somewhere.
-* Replace VBoxEFI64.fd in VirtualBox directory with it patched version from VBoxLdr\data directory. Rename file from it to VBoxEFI64.fd
-* Use hidevm_efiahci (AHCI controller mode) or hidevm_efiide (IDE controller mode) for your EFI VM
+* Make backup copy of original `VBoxEFI64.fd` in VirtualBox directory somewhere;
+* Replace `VBoxEFI64.fd` in VirtualBox directory with it patched version from VBoxLdr\data directory. Select proper version of file and then rename it to `VBoxEFI64.fd` (e.g. you have installed 5.1.18 then select `VBoxEFI64_5.1.18.fd`);
+* Use hidevm_efiahci (AHCI controller mode) or hidevm_efiide (IDE controller mode) for your EFI VM.
 
 ### Appendix C: Uninstalling VirtualBox loader
 
@@ -181,7 +181,7 @@ If monitoring driver loaded - reboot Windows. Delete VBoxLdr folder. Open regedi
 
 if present.
 
-If you used patched EFI module then restore VBoxEFI64.fd file from backup otherwise VirtualBox will be unable to work with EFI VM's.
+If you used patched EFI module then restore `VBoxEFI64.fd` file from backup otherwise VirtualBox will be unable to work with EFI VM's.
 
 ### Appendix D: Updating VirtualBox
 
