@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.80
+*  VERSION:     1.82
 *
-*  DATE:        31 Jan 2017
+*  DATE:        20 Apr 2017
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -19,10 +19,10 @@
 
 #pragma warning(disable: 6102) //"Using %s from failed call at line %s"
 
-static VBOX_PATCH g_VBoxDD;
+VBOX_PATCH g_VBoxDD;
 
 // Notify flag 
-static BOOLEAN     g_NotifySet;
+BOOLEAN     g_NotifySet;
 
 // Data buffer
 static const WCHAR DDname[] = L"VBoxDD.dll";
@@ -35,7 +35,8 @@ static const WCHAR DDname[] = L"VBoxDD.dll";
 *
 * Patch vbox dll in memory.
 *
-* Warning: potential BSOD-generator due to nonstandard way of loading, take care with patch offsets.
+* Warning: If compiled not in ReleaseSigned configuration this function is a
+* potential BSOD-generator due to nonstandard way of loading, take care with patch offsets.
 *
 */
 NTSTATUS TsmiHandleMemWrite(
@@ -118,7 +119,7 @@ NTSTATUS TsmiPatchImage(
         return ntStatus;
 
     KeWaitForSingleObject(&PatchInfo->Lock, Executive, KernelMode, FALSE, NULL);
-    
+
     PatchChains = PatchInfo->Chains;
 
     if (PatchChains != NULL) {
@@ -257,7 +258,7 @@ NTSTATUS TsmiReadPatchChains(
     }
 
     if ((status != STATUS_BUFFER_TOO_SMALL) && (status != STATUS_BUFFER_OVERFLOW)) {
-        return status; 
+        return status;
     }
 
     //
@@ -305,7 +306,7 @@ VOID TsmiCopyPatchChainsData(
 
     if ((Src->Chains == NULL) || (Src->ChainsLength == 0))
         return;
-    
+
     KeWaitForSingleObject(&Dst->Lock, Executive, KernelMode, FALSE, NULL);
 
     if (Dst->Chains != NULL) {
@@ -473,7 +474,7 @@ NTSTATUS UnsupportedDispatch(
 )
 {
     UNREFERENCED_PARAMETER(DeviceObject);
-    
+
     PAGED_CODE();
 
     Irp->IoStatus.Status = STATUS_NOT_SUPPORTED;
@@ -566,6 +567,8 @@ NTSTATUS DriverInitialize(
     //RegistryPath is unused
     UNREFERENCED_PARAMETER(RegistryPath);
 
+    g_NotifySet = FALSE;
+
     g_VBoxDD.Chains = NULL;
     g_VBoxDD.ChainsLength = 0;
     KeInitializeMutex(&g_VBoxDD.Lock, 0);
@@ -596,9 +599,6 @@ NTSTATUS DriverInitialize(
     devobj->Flags &= ~DO_DEVICE_INITIALIZING;
 #else
     DriverObject->DriverUnload = &DriverUnload;
-#endif
-
-    g_NotifySet = FALSE;
     status = TsmiLoadParameters();
     if (NT_SUCCESS(status)) {
         status = PsSetLoadImageNotifyRoutine(TsmiPsImageHandler);
@@ -606,6 +606,7 @@ NTSTATUS DriverInitialize(
             g_NotifySet = TRUE;
         }
     }
+#endif
     return STATUS_SUCCESS;
 }
 
