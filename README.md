@@ -66,6 +66,9 @@ Not required for VBoxHardenedLoader work. Since 1.8 version integrated to Zekama
 
 See CodeSigning.txt in Source directory for more info.
 
+# Linux support
+
+https://github.com/hfiref0x/VBoxHardenedLoader/blob/master/Binary/linux.md
 
 # Authors
 
