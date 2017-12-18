@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.81
+*  VERSION:     1.82
 *
-*  DATE:        20 Mar 2017
+*  DATE:        01 Dec 2017
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -28,7 +28,7 @@ WCHAR      g_BE = 0xFEFF;
 #define TsmiParamsKey   L"Parameters"
 #define TsmiVBoxDD      L"VBoxDD.dll"
 
-#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.8.1.2103"
+#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.8.2.1712"
 
 TABLE_DESC              g_PatchData = { NULL, 0 };
 

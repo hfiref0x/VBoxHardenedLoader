@@ -4,9 +4,9 @@
 *
 *  TITLE:       SUP.C
 *
-*  VERSION:     1.81
+*  VERSION:     1.82
 *
-*  DATE:        20 Mar 2017
+*  DATE:        01 Dec 2017
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -25,25 +25,25 @@
 *
 */
 VOID supPurgeSystemCache(
-	VOID
-	)
+    VOID
+)
 {
-	SYSTEM_FILECACHE_INFORMATION sfc;
-	SYSTEM_MEMORY_LIST_COMMAND smlc;
+    SYSTEM_FILECACHE_INFORMATION sfc;
+    SYSTEM_MEMORY_LIST_COMMAND smlc;
 
-	//flush file system cache
-	if (supEnablePrivilege(SE_INCREASE_QUOTA_PRIVILEGE, TRUE)) {
-		RtlSecureZeroMemory(&sfc, sizeof(SYSTEM_FILECACHE_INFORMATION));
-		sfc.MaximumWorkingSet = (SIZE_T)-1;
-		sfc.MinimumWorkingSet = (SIZE_T)-1;
-		NtSetSystemInformation(SystemFileCacheInformation, &sfc, sizeof(sfc));
-	}
+    //flush file system cache
+    if (supEnablePrivilege(SE_INCREASE_QUOTA_PRIVILEGE, TRUE)) {
+        RtlSecureZeroMemory(&sfc, sizeof(SYSTEM_FILECACHE_INFORMATION));
+        sfc.MaximumWorkingSet = (SIZE_T)-1;
+        sfc.MinimumWorkingSet = (SIZE_T)-1;
+        NtSetSystemInformation(SystemFileCacheInformation, &sfc, sizeof(sfc));
+    }
 
-	//flush standby list
-	if (supEnablePrivilege(SE_PROF_SINGLE_PROCESS_PRIVILEGE, TRUE)) {
-		smlc = MemoryPurgeStandbyList;
-		NtSetSystemInformation(SystemMemoryListInformation, &smlc, sizeof(smlc));
-	}
+    //flush standby list
+    if (supEnablePrivilege(SE_PROF_SINGLE_PROCESS_PRIVILEGE, TRUE)) {
+        smlc = MemoryPurgeStandbyList;
+        NtSetSystemInformation(SystemMemoryListInformation, &smlc, sizeof(smlc));
+    }
 }
 
 /*
@@ -57,36 +57,36 @@ VOID supPurgeSystemCache(
 *
 */
 BOOL supEnablePrivilege(
-	_In_ DWORD	PrivilegeName,
-	_In_ BOOL	fEnable
-	)
+    _In_ DWORD	PrivilegeName,
+    _In_ BOOL	fEnable
+)
 {
-	BOOL bResult = FALSE;
-	NTSTATUS status;
-	HANDLE hToken;
-	TOKEN_PRIVILEGES TokenPrivileges;
+    BOOL bResult = FALSE;
+    NTSTATUS status;
+    HANDLE hToken;
+    TOKEN_PRIVILEGES TokenPrivileges;
 
-	status = NtOpenProcessToken(
-		GetCurrentProcess(),
-		TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
-		&hToken);
+    status = NtOpenProcessToken(
+        GetCurrentProcess(),
+        TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
+        &hToken);
 
-	if (!NT_SUCCESS(status)) {
-		return bResult;
-	}
+    if (!NT_SUCCESS(status)) {
+        return bResult;
+    }
 
-	TokenPrivileges.PrivilegeCount = 1;
-	TokenPrivileges.Privileges[0].Luid.LowPart = PrivilegeName;
-	TokenPrivileges.Privileges[0].Luid.HighPart = 0;
-	TokenPrivileges.Privileges[0].Attributes = (fEnable) ? SE_PRIVILEGE_ENABLED : 0;
-	status = NtAdjustPrivilegesToken(hToken, FALSE, &TokenPrivileges,
-		sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, NULL);
-	if (status == STATUS_NOT_ALL_ASSIGNED) {
-		status = STATUS_PRIVILEGE_NOT_HELD;
-	}
-	bResult = NT_SUCCESS(status);
-	NtClose(hToken);
-	return bResult;
+    TokenPrivileges.PrivilegeCount = 1;
+    TokenPrivileges.Privileges[0].Luid.LowPart = PrivilegeName;
+    TokenPrivileges.Privileges[0].Luid.HighPart = 0;
+    TokenPrivileges.Privileges[0].Attributes = (fEnable) ? SE_PRIVILEGE_ENABLED : 0;
+    status = NtAdjustPrivilegesToken(hToken, FALSE, &TokenPrivileges,
+        sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, NULL);
+    if (status == STATUS_NOT_ALL_ASSIGNED) {
+        status = STATUS_PRIVILEGE_NOT_HELD;
+    }
+    bResult = NT_SUCCESS(status);
+    NtClose(hToken);
+    return bResult;
 }
 
 
@@ -104,24 +104,24 @@ BOOL supEnablePrivilege(
 *
 */
 void supCopyMemory(
-	_Inout_ void *dest,
-	_In_ size_t cbdest,
-	_In_ const void *src,
-	_In_ size_t cbsrc
-	)
+    _Inout_ void *dest,
+    _In_ size_t cbdest,
+    _In_ const void *src,
+    _In_ size_t cbsrc
+)
 {
-	char *d = (char*)dest;
-	char *s = (char*)src;
+    char *d = (char*)dest;
+    char *s = (char*)src;
 
-	if ((dest == 0) || (src == 0) || (cbdest == 0))
-		return;
-	if (cbdest<cbsrc)
-		cbsrc = cbdest;
+    if ((dest == 0) || (src == 0) || (cbdest == 0))
+        return;
+    if (cbdest < cbsrc)
+        cbsrc = cbdest;
 
-	while (cbsrc>0) {
-		*d++ = *s++;
-		cbsrc--;
-	}
+    while (cbsrc > 0) {
+        *d++ = *s++;
+        cbsrc--;
+    }
 }
 
 /*
@@ -136,42 +136,43 @@ void supCopyMemory(
 *
 */
 PVOID supGetSystemInfo(
-	_In_ SYSTEM_INFORMATION_CLASS InfoClass
-	)
+    _In_ SYSTEM_INFORMATION_CLASS InfoClass
+)
 {
-	INT			c = 0;
-	PVOID		Buffer = NULL;
-	ULONG		Size = 0x1000;
-	NTSTATUS	status;
-	ULONG       memIO;
+    INT			c = 0;
+    PVOID		Buffer = NULL;
+    ULONG		Size = 0x1000;
+    NTSTATUS	status;
+    ULONG       memIO;
 
-	do {
-		Buffer = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (SIZE_T)Size);
-		if (Buffer != NULL) {
-			status = NtQuerySystemInformation(InfoClass, Buffer, Size, &memIO);
-		}
-		else {
-			return NULL;
-		}
-		if (status == STATUS_INFO_LENGTH_MISMATCH) {
-			HeapFree(GetProcessHeap(), 0, Buffer);
-			Size *= 2;
-			c++;
-			if (c > 100) {
-				status = STATUS_SECRET_TOO_LONG;
-				break;
-			}
-		}
-	} while (status == STATUS_INFO_LENGTH_MISMATCH);
+    do {
+        Buffer = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (SIZE_T)Size);
+        if (Buffer != NULL) {
+            status = NtQuerySystemInformation(InfoClass, Buffer, Size, &memIO);
+        }
+        else {
+            return NULL;
+        }
+        if (status == STATUS_INFO_LENGTH_MISMATCH) {
+            HeapFree(GetProcessHeap(), 0, Buffer);
+            Buffer = NULL;
+            Size *= 2;
+            c++;
+            if (c > 100) {
+                status = STATUS_SECRET_TOO_LONG;
+                break;
+            }
+        }
+    } while (status == STATUS_INFO_LENGTH_MISMATCH);
 
-	if (NT_SUCCESS(status)) {
-		return Buffer;
-	}
+    if (NT_SUCCESS(status)) {
+        return Buffer;
+    }
 
-	if (Buffer) {
-		HeapFree(GetProcessHeap(), 0, Buffer);
-	}
-	return NULL;
+    if (Buffer) {
+        HeapFree(GetProcessHeap(), 0, Buffer);
+    }
+    return NULL;
 }
 
 /*
@@ -183,39 +184,39 @@ PVOID supGetSystemInfo(
 *
 */
 BOOL supProcessExist(
-	_In_ LPWSTR lpProcessName
-	)
+    _In_ LPWSTR lpProcessName
+)
 {
-	BOOL cond = FALSE;
-	PSYSTEM_PROCESSES_INFORMATION ProcessList, pList;
-	UNICODE_STRING procName;
-	BOOL bResult = FALSE;
+    BOOL cond = FALSE;
+    PSYSTEM_PROCESSES_INFORMATION ProcessList, pList;
+    UNICODE_STRING procName;
+    BOOL bResult = FALSE;
 
-	ProcessList = (PSYSTEM_PROCESSES_INFORMATION)supGetSystemInfo(SystemProcessInformation);
-	if (ProcessList == NULL) {
-		return bResult;
-	}
+    ProcessList = (PSYSTEM_PROCESSES_INFORMATION)supGetSystemInfo(SystemProcessInformation);
+    if (ProcessList == NULL) {
+        return bResult;
+    }
 
-	do {
-		RtlSecureZeroMemory(&procName, sizeof(procName));
-		RtlInitUnicodeString(&procName, lpProcessName);
-		pList = ProcessList;
+    do {
+        RtlSecureZeroMemory(&procName, sizeof(procName));
+        RtlInitUnicodeString(&procName, lpProcessName);
+        pList = ProcessList;
 
-		for (;;) {
-			if (RtlEqualUnicodeString(&procName, &pList->ImageName, TRUE)) {
-				bResult = TRUE;
-				break;
-			}
-			if (pList->NextEntryDelta == 0) {
-				break;
-			}
-			pList = (PSYSTEM_PROCESSES_INFORMATION)(((LPBYTE)pList) + pList->NextEntryDelta);
-		}
+        for (;;) {
+            if (RtlEqualUnicodeString(&procName, &pList->ImageName, TRUE)) {
+                bResult = TRUE;
+                break;
+            }
+            if (pList->NextEntryDelta == 0) {
+                break;
+            }
+            pList = (PSYSTEM_PROCESSES_INFORMATION)(((LPBYTE)pList) + pList->NextEntryDelta);
+        }
 
-	} while (cond);
+    } while (cond);
 
-	HeapFree(GetProcessHeap(), 0, ProcessList);
-	return bResult;
+    HeapFree(GetProcessHeap(), 0, ProcessList);
+    return bResult;
 }
 
 /*
@@ -245,7 +246,7 @@ BOOL supLoadDeviceDriver(
         cch = GetCurrentDirectory(MAX_PATH, szFile);
         if ((cch != 0) && (cch < MAX_PATH)) {
             _strcat(szFile, TEXT("\\"));
-            _strcat(szFile, TSUGUMI_DRV_NAME);    
+            _strcat(szFile, TSUGUMI_DRV_NAME);
 
             _strcpy(szLog, TEXT("Ldr: Loading Tsugumi Monitor -> "));
             _strcat(szLog, szFile);
