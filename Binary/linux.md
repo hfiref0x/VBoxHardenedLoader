@@ -1,4 +1,4 @@
-Although this leader was initially created for use with Windows VirtualBox version, part of it can be used on Linux version as well.
+Although this loader was initially created for use with Windows VirtualBox version, part of it can be used on Linux version as well.
 
 Patching VirtualBox on Linux
 
