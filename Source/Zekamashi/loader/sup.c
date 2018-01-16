@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2017
+*  (C) COPYRIGHT AUTHORS, 2014 - 2018
 *
 *  TITLE:       SUP.C
 *
-*  VERSION:     1.82
+*  VERSION:     1.90
 *
-*  DATE:        01 Dec 2017
+*  DATE:        11 Jan 2018
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -139,14 +139,15 @@ PVOID supGetSystemInfo(
     _In_ SYSTEM_INFORMATION_CLASS InfoClass
 )
 {
-    INT			c = 0;
-    PVOID		Buffer = NULL;
-    ULONG		Size = 0x1000;
-    NTSTATUS	status;
+    INT         c = 0;
+    PVOID       Buffer = NULL;
+    HANDLE      ProcessHeap = GetProcessHeap();
+    ULONG       Size = 0x1000;
+    NTSTATUS    status;
     ULONG       memIO;
 
     do {
-        Buffer = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (SIZE_T)Size);
+        Buffer = HeapAlloc(ProcessHeap, HEAP_ZERO_MEMORY, (SIZE_T)Size);
         if (Buffer != NULL) {
             status = NtQuerySystemInformation(InfoClass, Buffer, Size, &memIO);
         }
@@ -154,7 +155,7 @@ PVOID supGetSystemInfo(
             return NULL;
         }
         if (status == STATUS_INFO_LENGTH_MISMATCH) {
-            HeapFree(GetProcessHeap(), 0, Buffer);
+            HeapFree(ProcessHeap, 0, Buffer);
             Buffer = NULL;
             Size *= 2;
             c++;
@@ -170,7 +171,7 @@ PVOID supGetSystemInfo(
     }
 
     if (Buffer) {
-        HeapFree(GetProcessHeap(), 0, Buffer);
+        HeapFree(ProcessHeap, 0, Buffer);
     }
     return NULL;
 }

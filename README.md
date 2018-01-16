@@ -12,17 +12,20 @@ https://github.com/hfiref0x/VBoxHardenedLoader/blob/master/Binary/install_signed
 
 # System Requirements
 
-x64 Windows 7/8/8.1/10(TH1/TH2/RS1/RS2);
+x64 Windows 7/8/8.1/10(TH1/TH2/RS1/RS2/RS3);
 
-VirtualBox 5.1 and later versions.
+VirtualBox 5.2.4 and later versions.
 
 For version below VirtualBox 5.0 use older release of this loader.
 For versions 5.0.0, 5.0.2, 5.0.8, 5.0.10, 5.0.12 please use loader version 1.5.
+For versions 5.1.x use loader version 1.8.0 or 1.8.2
 
 Loader designed only for x64 Windows.
 
 Administrative privilege is required.
 
+# Warning
+Binary files (ACPI tables, BIOS roms), batch scripts from loader version 1.9+ are NOT compatible with VirtualBox 5.1 and below.
 
 # Installation and use
 
@@ -72,4 +75,4 @@ https://github.com/hfiref0x/VBoxHardenedLoader/blob/master/Binary/linux.md
 
 # Authors
 
-(c) 2014 - 2017 VBoxHardenedLoader Project
+(c) 2014 - 2018 VBoxHardenedLoader Project

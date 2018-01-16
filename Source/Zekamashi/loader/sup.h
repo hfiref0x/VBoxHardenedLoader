@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2017
+*  (C) COPYRIGHT AUTHORS, 2014 - 2018
 *
 *  TITLE:       SUP.H
 *
-*  VERSION:     1.80
+*  VERSION:     1.90
 *
-*  DATE:        01 Feb 2017
+*  DATE:        11 Jan 2018
 *
 *  Common header file for the program support routines.
 *

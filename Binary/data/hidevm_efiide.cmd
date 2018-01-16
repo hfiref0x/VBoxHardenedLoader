@@ -49,6 +49,15 @@ set vmscfgdir=D:\Virtual\VBOX\Settings\
 %vboxman% setextradata "%1" "VBoxInternal/Devices/acpi/0/Config/AcpiOemId" "APPLE"
 %vboxman% modifyvm "%1" --macaddress1 6CF0491A6E85
 %vboxman% modifyvm "%1" --paravirtprovider legacy
+%vboxman% modifyvm "%1" --hwvirtex on
+%vboxman% modifyvm "%1" --vtxvpid on
+%vboxman% modifyvm "%1" --vtxux on
+%vboxman% modifyvm "%1" --apic on
+%vboxman% modifyvm "%1" --pae on
+%vboxman% modifyvm "%1" --longmode on
+%vboxman% modifyvm "%1" --hpet on
+%vboxman% modifyvm "%1" --nestedpaging on
+%vboxman% modifyvm "%1" --largepages on
 
 cd /d %vmscfgdir%
 

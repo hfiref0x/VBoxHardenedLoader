@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2017
+*  (C) COPYRIGHT AUTHORS, 2014 - 2018
 *
 *  TITLE:       PATTERNS.C
 *
-*  VERSION:     1.81
+*  VERSION:     1.90
 *
-*  DATE:        20 Mar 2017
+*  DATE:        11 Jan 2018
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -182,7 +182,7 @@ UINT ProcessVirtualBoxFile(
             g_ConsoleOutput, TRUE);
 
         //
-        //FACP
+        // FACP
         //
         RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
         Pattern = FindPattern(
@@ -202,7 +202,7 @@ UINT ProcessVirtualBoxFile(
         cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
 
         //
-        //RSDT
+        // RSDT
         //
         RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
         Pattern = FindPattern(
@@ -222,7 +222,7 @@ UINT ProcessVirtualBoxFile(
         cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
 
         //
-        //XSDT
+        // XSDT
         //
         RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
         Pattern = FindPattern(
@@ -242,7 +242,7 @@ UINT ProcessVirtualBoxFile(
         cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
 
         //
-        //APIC
+        // APIC
         //
         RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
         Pattern = FindPattern(
@@ -262,7 +262,7 @@ UINT ProcessVirtualBoxFile(
         cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
 
         //
-        //HPET
+        // HPET
         //
         RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
         Pattern = FindPattern(
@@ -282,7 +282,7 @@ UINT ProcessVirtualBoxFile(
         cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
 
         //
-        //MCFG
+        // MCFG
         //
         RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
         Pattern = FindPattern(
@@ -302,7 +302,7 @@ UINT ProcessVirtualBoxFile(
         cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
 
         //
-        //VBOXCPU
+        // VBOXCPU
         //
         RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
         Pattern = FindPattern(
@@ -322,7 +322,27 @@ UINT ProcessVirtualBoxFile(
         cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
 
         //
-        //VBOX generic
+        // VBOX 1.0 CDROM
+        //
+        /*RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
+        Pattern = FindPattern(
+            (CONST PBYTE)DllBase, DllVirtualSize,
+            (CONST PBYTE)CDROMVBOX_PATTERN, sizeof(CDROMVBOX_PATTERN));
+        if (Pattern) {
+            DataBlocks[c].VirtualOffset = (ULONG)(12 + Pattern - DllBase);
+            DataBlocks[c].DataLength = sizeof(VBOX_PATCH);
+            RtlCopyMemory(DataBlocks[c].Data, VBOX_PATCH, DataBlocks[c].DataLength);
+            _strcpy(LogBuffer, TEXT("VBOXCDROM\t0x"));
+            ultohex((ULONG)DataBlocks[c].VirtualOffset, _strend(LogBuffer));
+            c += 1;
+        }
+        else {
+            _strcpy(LogBuffer, TEXT("\tPattern VBOXCDROM not found"));
+        }
+        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);*/
+
+        //
+        // VBOX generic
         //
         RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
         Pattern = FindPattern(

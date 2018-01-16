@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2017
+*  (C) COPYRIGHT AUTHORS, 2017 - 2018
 *
 *  TITLE:       PATTERNS.H
 *
-*  VERSION:     1.80
+*  VERSION:     1.90
 *
-*  DATE:        30 Jan 2017
+*  DATE:        11 Jan 2018
 *
 *  Search patterns and patches header file.
 *
@@ -123,6 +123,12 @@ static const unsigned char CFGSTRINGS_PATTERN[] = {
     0x61, 0x6C, 0x6C, 0x65, 0x6C, 0x31, 0x49, 0x72,
     0x71, 0x00, 0x00
 };
+
+/*static const unsigned char CDROMVBOX_PATTERN[] = {
+    0x31, 0x2E, 0x30, 0x00, 0x43, 0x44, 0x2D, 0x52,
+    0x4F, 0x4D, 0x00, 0x00, 0x56, 0x42, 0x4F, 0x58,
+    0x00
+};*/
 
 static const unsigned char PCI80EE_PATTERN[] = {
     0xB8, 0xEE, 0x80, 0x00, 0x00

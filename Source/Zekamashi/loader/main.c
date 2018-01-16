@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2017
+*  (C) COPYRIGHT AUTHORS, 2014 - 2018
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.82
+*  VERSION:     1.90
 *
-*  DATE:        01 Dec 2017
+*  DATE:        11 Jan 2018
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -28,7 +28,7 @@ WCHAR      g_BE = 0xFEFF;
 #define TsmiParamsKey   L"Parameters"
 #define TsmiVBoxDD      L"VBoxDD.dll"
 
-#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.8.2.1712"
+#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.9.0.1801"
 
 TABLE_DESC              g_PatchData = { NULL, 0 };
 
@@ -41,7 +41,6 @@ LOADER [/s] or [Table]\n\n\r\
   /s - stop monitoring and purge system cache.\n\r\
   Table - optional, custom VBoxDD patch table fullpath.\n\r\r\
   Example: ldr.exe vboxdd.bin"
-
 
 /*
 * SetTsmiParams
