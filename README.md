@@ -12,9 +12,9 @@ https://github.com/hfiref0x/VBoxHardenedLoader/blob/master/Binary/install_signed
 
 # System Requirements
 
-x64 Windows 7/8/8.1/10(TH1/TH2/RS1/RS2/RS3);
+x64 Windows 7/8/8.1/10;
 
-VirtualBox 5.2.4 and later versions.
+VirtualBox 5.2.4, 5.2.12 and later versions.
 
 For version below VirtualBox 5.0 use older release of this loader.
 
