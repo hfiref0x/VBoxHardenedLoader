@@ -510,22 +510,36 @@ UINT ProcessVirtualBoxFile(
         //
         // BEEF
         //
+
         RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
-        Pattern = FindPattern(
-            (CONST PBYTE)DllBase, DllVirtualSize,
-            (CONST PBYTE)PCIBEEF_PATTERN, sizeof(PCIBEEF_PATTERN));
-        if (Pattern) {
-            DataBlocks[c].VirtualOffset = (ULONG)(1 + Pattern - DllBase);
-            DataBlocks[c].DataLength = sizeof(HWID_PATCH_VIDEO_2);
-            RtlCopyMemory(DataBlocks[c].Data, HWID_PATCH_VIDEO_2, DataBlocks[c].DataLength);
-            _strcpy(LogBuffer, TEXT("BEEF\t\t0x"));
-            ultohex((ULONG)DataBlocks[c].VirtualOffset, _strend(LogBuffer));
-            c += 1;
-        }
-        else {
-            _strcpy(LogBuffer, TEXT("\tPattern BEEF not found"));
-        }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        d = 0;
+        Pattern = DllBase;
+        do {
+            Pattern = FindPattern(
+                (CONST PBYTE)Pattern, DllVirtualSize - (Pattern - DllBase),
+                (CONST PBYTE)PCIBEEF_PATTERN, sizeof(PCIBEEF_PATTERN));
+            if (Pattern) {
+                DataBlocks[c].VirtualOffset = (ULONG)(1 + Pattern - DllBase);
+                DataBlocks[c].DataLength = sizeof(HWID_PATCH_VIDEO_2);
+                RtlCopyMemory(DataBlocks[c].Data, HWID_PATCH_VIDEO_2, DataBlocks[c].DataLength);
+                RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
+                _strcpy(LogBuffer, TEXT("BEEF\t\t0x"));
+                ultohex((ULONG)DataBlocks[c].VirtualOffset, _strend(LogBuffer));
+                cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+                c += 1;
+                d += 1;
+                if (d > MAX_HWID_BLOCKS_DEEP) {
+                    cuiPrintText(g_ConOut,
+                        TEXT("\r\nVPG: Maximum hwid blocks deep, abort scan.\r\n"),
+                        g_ConsoleOutput, TRUE);
+                    break;
+                }
+            }
+            else {
+                break;
+            }
+            Pattern++;
+        } while (DllVirtualSize - (Pattern - DllBase) > 0);
 
         //
         // CAFE
