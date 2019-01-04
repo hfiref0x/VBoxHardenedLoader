@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2017
+*  (C) COPYRIGHT AUTHORS, 2017 - 2019
 *
 *  TITLE:       GLOBAL.H
 *
-*  VERSION:     1.00
+*  VERSION:     1.20
 *
-*  DATE:        03 Jan 2017
+*  DATE:        04 Jan 2019
 *
 *  Common header file for the program support routines.
 *
@@ -19,21 +19,20 @@
 //disable nonmeaningful warnings.
 #pragma warning(disable: 4005) // macro redefinition
 #pragma warning(disable: 4201) // nonstandard extension used : nameless struct/union
-#pragma warning(disable: 4054) // %s : from function pointer %s to data pointer %s
-#pragma warning(disable: 6102) // Using %s from failed function call at line %u
-#pragma warning(disable: 28252) //Inconsistent annotation for %s
-#pragma warning(disable: 28253) //Inconsistent annotation for %s
 
 #if !defined UNICODE
 #error ANSI build is not supported
 #endif
 
-#if (_MSC_VER >= 1900) 
+#if defined (_MSC_VER)
+#if (_MSC_VER >= 1900) //VS15, 17 etc
 #ifdef _DEBUG
 #pragma comment(lib, "vcruntimed.lib")
 #pragma comment(lib, "ucrtd.lib")
 #else
+#pragma comment(lib, "libucrt.lib")
 #pragma comment(lib, "libvcruntime.lib")
+#endif
 #endif
 #endif
 

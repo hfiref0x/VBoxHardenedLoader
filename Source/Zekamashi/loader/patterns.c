@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2018
+*  (C) COPYRIGHT AUTHORS, 2014 - 2019
 *
 *  TITLE:       PATTERNS.C
 *
-*  VERSION:     1.90
+*  VERSION:     1.100
 *
-*  DATE:        11 Jan 2018
+*  DATE:        04 Jan 2019
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -88,7 +88,7 @@ BOOL BuildTable(
         ProcessedSize = 0;
         for (i = 0; i < BlockCount; i++) {
             dwEntrySize = sizeof(ULONG) + sizeof(UCHAR) + (sizeof(UCHAR) * PatchBlock[i].DataLength);
-            if (ProcessedSize + dwEntrySize > TableSize)
+            if (ProcessedSize + dwEntrySize > (DWORD)TableSize)
                 break;
             RtlCopyMemory(&Table[ProcessedSize], &PatchBlock[i], dwEntrySize);
             ProcessedSize += dwEntrySize;
@@ -177,9 +177,7 @@ UINT ProcessVirtualBoxFile(
         c = 0;
 
         //locate VBOX patterns
-        cuiPrintText(g_ConOut,
-            TEXT("\r\nPattern matching: 'VBOX'\r\n"),
-            g_ConsoleOutput, TRUE);
+        cuiPrintText(TEXT("\r\nPattern matching: 'VBOX'\r\n"), TRUE);
 
         //
         // FACP
@@ -199,7 +197,7 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern FACP not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // RSDT
@@ -219,7 +217,7 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern RSDT not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // XSDT
@@ -239,7 +237,7 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern XSDT not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // APIC
@@ -259,7 +257,7 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern APIC not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // HPET
@@ -279,7 +277,7 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern HPET not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // MCFG
@@ -299,7 +297,7 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern MCFG not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // VBOXCPU
@@ -319,7 +317,7 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern VBOXCPU not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // VBOX 1.0 CDROM
@@ -339,7 +337,7 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern VBOXCDROM not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);*/
+        cuiPrintText(LogBuffer, TRUE);*/
 
         //
         // VBOX generic
@@ -359,12 +357,10 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern VBOX generic not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //locate VirtualBox pattern
-        cuiPrintText(g_ConOut,
-            TEXT("\r\nPattern matching: 'VirtualBox'\r\n"),
-            g_ConsoleOutput, TRUE);
+        cuiPrintText(TEXT("\r\nPattern matching: 'VirtualBox'\r\n"), TRUE);
 
         //
         // 'VirtualBox'
@@ -384,7 +380,7 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern VirtualBox not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // 'VirtualBox__'
@@ -404,7 +400,7 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern VirtualBox__ not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // 'VirtualBox GIM'
@@ -424,7 +420,7 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tVirtualBox GIM pattern not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // 'VirtualBox VMM'
@@ -444,12 +440,10 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern VirtualBox VMM not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //locate Configuration pattern
-        cuiPrintText(g_ConOut,
-            TEXT("\r\nPattern matching: Configuration\r\n"),
-            g_ConsoleOutput, TRUE);
+        cuiPrintText(TEXT("\r\nPattern matching: Configuration\r\n"), TRUE);
 
         RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
         Pattern = FindPattern(
@@ -466,14 +460,12 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern Configuration not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // HWID
         //
-        cuiPrintText(g_ConOut,
-            TEXT("\r\nPattern matching: Hardware ID\r\n"),
-            g_ConsoleOutput, TRUE);
+        cuiPrintText(TEXT("\r\nPattern matching: Hardware ID\r\n"), TRUE);
 
         //
         // 80EE
@@ -491,13 +483,11 @@ UINT ProcessVirtualBoxFile(
                 RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
                 _strcpy(LogBuffer, TEXT("80EE\t\t0x"));
                 ultohex((ULONG)DataBlocks[c].VirtualOffset, _strend(LogBuffer));
-                cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+                cuiPrintText(LogBuffer, TRUE);
                 c += 1;
                 d += 1;
                 if (d > MAX_HWID_BLOCKS_DEEP) {
-                    cuiPrintText(g_ConOut,
-                        TEXT("\r\nLdr: Maximum hwid blocks deep, abort scan.\r\n"),
-                        g_ConsoleOutput, TRUE);
+                    cuiPrintText(TEXT("\r\nLdr: Maximum hwid blocks deep, abort scan.\r\n"), TRUE);
                     break;
                 }
             }
@@ -510,22 +500,34 @@ UINT ProcessVirtualBoxFile(
         //
         // BEEF
         //
+
         RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
-        Pattern = FindPattern(
-            (CONST PBYTE)DllBase, DllVirtualSize,
-            (CONST PBYTE)PCIBEEF_PATTERN, sizeof(PCIBEEF_PATTERN));
-        if (Pattern) {
-            DataBlocks[c].VirtualOffset = (ULONG)(1 + Pattern - DllBase);
-            DataBlocks[c].DataLength = sizeof(HWID_PATCH_VIDEO_2);
-            RtlCopyMemory(DataBlocks[c].Data, HWID_PATCH_VIDEO_2, DataBlocks[c].DataLength);
-            _strcpy(LogBuffer, TEXT("BEEF\t\t0x"));
-            ultohex((ULONG)DataBlocks[c].VirtualOffset, _strend(LogBuffer));
-            c += 1;
-        }
-        else {
-            _strcpy(LogBuffer, TEXT("\tPattern BEEF not found"));
-        }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        d = 0;
+        Pattern = DllBase;
+        do {
+            Pattern = FindPattern(
+                (CONST PBYTE)Pattern, DllVirtualSize - (Pattern - DllBase),
+                (CONST PBYTE)PCIBEEF_PATTERN, sizeof(PCIBEEF_PATTERN));
+            if (Pattern) {
+                DataBlocks[c].VirtualOffset = (ULONG)(1 + Pattern - DllBase);
+                DataBlocks[c].DataLength = sizeof(HWID_PATCH_VIDEO_2);
+                RtlCopyMemory(DataBlocks[c].Data, HWID_PATCH_VIDEO_2, DataBlocks[c].DataLength);
+                RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
+                _strcpy(LogBuffer, TEXT("BEEF\t\t0x"));
+                ultohex((ULONG)DataBlocks[c].VirtualOffset, _strend(LogBuffer));
+                cuiPrintText(LogBuffer, TRUE);
+                c += 1;
+                d += 1;
+                if (d > MAX_HWID_BLOCKS_DEEP) {
+                    cuiPrintText(TEXT("\r\nLdr: Maximum hwid blocks deep, abort scan.\r\n"), TRUE);
+                    break;
+                }
+            }
+            else {
+                break;
+            }
+            Pattern++;
+        } while (DllVirtualSize - (Pattern - DllBase) > 0);
 
         //
         // CAFE
@@ -545,7 +547,7 @@ UINT ProcessVirtualBoxFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern CAFE not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         if (BuildTable(DataBlocks, c, OutputBuffer, OutputBufferSize))
             uResult = 0;

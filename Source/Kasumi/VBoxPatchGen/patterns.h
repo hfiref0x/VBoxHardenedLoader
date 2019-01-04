@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2017 - 2018
+*  (C) COPYRIGHT AUTHORS, 2017 - 2019
 *
 *  TITLE:       PATTERNS.H
 *
-*  VERSION:     1.10
+*  VERSION:     1.20
 *
-*  DATE:        11 Jan 2018
+*  DATE:        04 Jan 2019
 *
 *  Search patterns and patches header file.
 *

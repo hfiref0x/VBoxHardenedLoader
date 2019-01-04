@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2018
+*  (C) COPYRIGHT AUTHORS, 2014 - 2019
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.90
+*  VERSION:     1.100
 *
-*  DATE:        11 Jan 2018
+*  DATE:        04 Jan 2019
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -21,25 +21,21 @@
 volatile LONG           g_lApplicationInstances = 0;
 #pragma data_seg()
 
-HANDLE     g_ConOut = NULL;
-BOOL       g_ConsoleOutput = FALSE;
-WCHAR      g_BE = 0xFEFF;
-
 #define TsmiParamsKey   L"Parameters"
 #define TsmiVBoxDD      L"VBoxDD.dll"
 
-#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.9.0.1801"
+#define T_PROGRAMTITLE  L"VirtualBox Hardened Loader v1.10.0.1901"
 
 TABLE_DESC              g_PatchData = { NULL, 0 };
 
 //
 // Help output.
 //
-#define T_HELP	L"Sets parameters for Tsugumi driver.\n\n\r\
-Optional parameters to execute: \n\n\r\
-LOADER [/s] or [Table]\n\n\r\
-  /s - stop monitoring and purge system cache.\n\r\
-  Table - optional, custom VBoxDD patch table fullpath.\n\r\r\
+#define T_HELP	L"Sets parameters for Tsugumi driver.\r\n\r\n\
+Optional parameters to execute: \r\n\r\n\
+LOADER [/s] or [Table]\r\n\r\n\
+  /s - stop monitoring and purge system cache.\r\n\
+  Table - optional, custom VBoxDD patch table fullpath.\r\n\r\n\
   Example: ldr.exe vboxdd.bin"
 
 /*
@@ -67,13 +63,13 @@ BOOL SetTsmiParams(
             NULL, &hRootKey, NULL);
 
         if ((lRet != ERROR_SUCCESS) || (hRootKey == NULL)) {
-            cuiPrintText(g_ConOut, TEXT("Ldr: Cannot create/open Tsugumi key"), g_ConsoleOutput, TRUE);
+            cuiPrintText(TEXT("Ldr: Cannot create/open Tsugumi key"), TRUE);
             break;
         }
 
         lRet = RegCreateKey(hRootKey, TsmiParamsKey, &hParamsKey);
         if ((lRet != ERROR_SUCCESS) || (hParamsKey == NULL)) {
-            cuiPrintText(g_ConOut, TEXT("Ldr: Cannot create/open Tsugumi->Parameters key"), g_ConsoleOutput, TRUE);
+            cuiPrintText(TEXT("Ldr: Cannot create/open Tsugumi->Parameters key"), TRUE);
             break;
         }
 
@@ -82,7 +78,7 @@ BOOL SetTsmiParams(
             lRet = RegSetValueEx(hParamsKey, TsmiVBoxDD, 0, REG_BINARY,
                 (LPBYTE)g_PatchData.DDTablePointer, g_PatchData.DDTableSize);
             if (lRet != ERROR_SUCCESS) {
-                cuiPrintText(g_ConOut, TEXT("Ldr: Cannot write VBoxDD patch table"), g_ConsoleOutput, TRUE);
+                cuiPrintText(TEXT("Ldr: Cannot write VBoxDD patch table"), TRUE);
                 break;
             }
         }
@@ -188,7 +184,7 @@ BOOL CreatePatchTable(
         // If key not exists, return FALSE and loader will exit.
         //
         if ((lRet != ERROR_SUCCESS) || (hKey == NULL)) {
-            cuiPrintText(g_ConOut, TEXT("Ldr: Cannot open VirtualBox registry key"), g_ConsoleOutput, TRUE);
+            cuiPrintText(TEXT("Ldr: Cannot open VirtualBox registry key"), TRUE);
             break;
         }
 
@@ -199,7 +195,7 @@ BOOL CreatePatchTable(
         dwSize = MAX_PATH * sizeof(TCHAR);
         lRet = RegQueryValueEx(hKey, TEXT("InstallDir"), NULL, NULL, (LPBYTE)&szBuffer, &dwSize);
         if (lRet != ERROR_SUCCESS) {
-            cuiPrintText(g_ConOut, TEXT("Ldr: Cannot query VirtualBox installation directory"), g_ConsoleOutput, TRUE);
+            cuiPrintText(TEXT("Ldr: Cannot query VirtualBox installation directory"), TRUE);
             break;
         }
 
@@ -261,7 +257,7 @@ VOID SendCommand(
         RtlSecureZeroMemory(szBuffer, sizeof(szBuffer));
         _strcpy(szBuffer, TEXT("Ldr: Tsugumi device handle opened = "));
         u64tostr((ULONG_PTR)hDevice, _strend(szBuffer));
-        cuiPrintText(g_ConOut, szBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(szBuffer, TRUE);
 
         DeviceIoControl(hDevice, dwCmd, NULL, 0, NULL, 0, &l, NULL);
 
@@ -274,20 +270,19 @@ VOID SendCommand(
             _strcat(szBuffer, TEXT(" successful"));
         else
             _strcat(szBuffer, TEXT(" failed"));
-        cuiPrintText(g_ConOut, szBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(szBuffer, TRUE);
 
         CloseHandle(hDevice);
 
         if (l == 1) {
             //force windows rebuild image cache
-            cuiPrintText(g_ConOut, TEXT("Ldr: purge system cache"), g_ConsoleOutput, TRUE);
+            cuiPrintText(TEXT("Ldr: purge system cache"), TRUE);
             supPurgeSystemCache();
         }
 
     }
     else {
-        cuiPrintText(g_ConOut,
-            TEXT("Ldr: Cannot open Tsugumi device, make sure driver is loaded before running this program"), g_ConsoleOutput, TRUE);
+        cuiPrintText(TEXT("Ldr: Cannot open Tsugumi device, make sure driver is loaded before running this program"), TRUE);
     }
 }
 
@@ -303,7 +298,7 @@ void VBoxLdrMain(
     VOID
 )
 {
-    BOOL    cond = FALSE, bFound = FALSE;
+    BOOL    cond = FALSE, bFound = FALSE, bTryVBoxRestart = FALSE;
     LONG    x;
     ULONG   l = 0, uCmd = 0;
     PVOID   DataBufferDD = NULL;
@@ -313,23 +308,10 @@ void VBoxLdrMain(
 
     do {
 
-        g_ConOut = GetStdHandle(STD_OUTPUT_HANDLE);
-        if (g_ConOut == INVALID_HANDLE_VALUE) {
-            break;
-        }
-
-        g_ConsoleOutput = TRUE;
-        if (!GetConsoleMode(g_ConOut, &l)) {
-            g_ConsoleOutput = FALSE;
-        }
+        cuiInitialize(FALSE, NULL);
 
         SetConsoleTitle(T_PROGRAMTITLE);
-        SetConsoleMode(g_ConOut, ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_OUTPUT);
-        if (g_ConsoleOutput == FALSE) {
-            WriteFile(g_ConOut, &g_BE, sizeof(WCHAR), &l, NULL);
-        }
-
-        cuiPrintText(g_ConOut, T_PROGRAMTITLE, g_ConsoleOutput, TRUE);
+        cuiPrintText(T_PROGRAMTITLE, TRUE);
 
         //
         // Check number of instances running.
@@ -348,7 +330,7 @@ void VBoxLdrMain(
         // We support only Vista based OS.
         //
         if (l < 6) {
-            cuiPrintText(g_ConOut, TEXT("Ldr: This operation system version is not supported"), g_ConsoleOutput, TRUE);
+            cuiPrintText(TEXT("Ldr: This operation system version is not supported"), TRUE);
             break;
         }
 
@@ -360,7 +342,8 @@ void VBoxLdrMain(
         if (l > 0) {
 
             if (_strcmpi(szBuffer, TEXT("/?")) == 0) {
-                cuiPrintText(g_ConOut, T_HELP, g_ConsoleOutput, TRUE);
+                cuiPrintText(T_HELP, TRUE);
+                ExitProcess(0);
                 break;
             }
 
@@ -379,7 +362,7 @@ void VBoxLdrMain(
                     bFound = TRUE;
                 }
                 else {
-                    cuiPrintText(g_ConOut, TEXT("Ldr: Error reading file at parameter 1"), g_ConsoleOutput, TRUE);
+                    cuiPrintText(TEXT("Ldr: Error reading file at parameter 1"), TRUE);
                     break;
                 }
             }
@@ -391,11 +374,11 @@ void VBoxLdrMain(
         if (bFound == FALSE) {
             bFound = CreatePatchTable();
             if (bFound == FALSE) {
-                cuiPrintText(g_ConOut, TEXT("\r\nLdr: Could not load patch table"), g_ConsoleOutput, TRUE);
+                cuiPrintText(TEXT("Ldr: Could not load patch table"), TRUE);
                 break;
             }
             else {
-                cuiPrintText(g_ConOut, TEXT("\r\nLdr: Patch table created"), g_ConsoleOutput, TRUE);
+                cuiPrintText(TEXT("Ldr: Patch table created"), TRUE);
             }
         }
 
@@ -404,17 +387,17 @@ void VBoxLdrMain(
         // Check if any VBox instances are running, they must be closed before our usage.
         //
         if (supProcessExist(L"VirtualBox.exe")) {
-            cuiPrintText(g_ConOut, TEXT("Ldr: VirtualBox is running, close it before"), g_ConsoleOutput, TRUE);
+            cuiPrintText(TEXT("Ldr: VirtualBox is running, close it before"), TRUE);
             break;
         }
 #endif
 
         if (!SetTsmiParams()) {
-            cuiPrintText(g_ConOut, TEXT("Ldr: Cannot write Tsugumi settings"), g_ConsoleOutput, TRUE);
+            cuiPrintText(TEXT("Ldr: Cannot write Tsugumi settings"), TRUE);
             break;
         }
         else {
-            cuiPrintText(g_ConOut, TEXT("Ldr: Tsugumi patch table parameters set"), g_ConsoleOutput, TRUE);
+            cuiPrintText(TEXT("Ldr: Tsugumi patch table parameters set"), TRUE);
         }
 
         //
@@ -422,15 +405,30 @@ void VBoxLdrMain(
         //
 #ifdef _SIGNED_BUILD
         if (!supLoadDeviceDriver()) {
-            cuiPrintText(g_ConOut, TEXT("Ldr: Failed to load Tsugumi monitor driver"), g_ConsoleOutput, TRUE);
+            cuiPrintText(TEXT("Ldr: Failed to load Tsugumi monitor driver"), TRUE);
             break;
         }
+#else 
+        bTryVBoxRestart = TRUE;
 #endif
         //send command to driver
         SendCommand(uCmd, TEXT("TSUGUMI_IOCTL_REFRESH_LIST"));
 
     } while (cond);
-    cuiPrintText(g_ConOut, TEXT("Ldr: exit"), g_ConsoleOutput, TRUE);
+
+    if (bTryVBoxRestart) {
+        l = 0;
+        if (supRestartVBoxDrv(&l)) {
+            cuiPrintText(TEXT("Ldr: supRestartVBoxDrv success"), TRUE);
+        }
+        else {
+            _strcpy(szBuffer, TEXT("Ldr: supRestartVBoxDrv = 0x"));
+            ultohex(l, _strend(szBuffer));
+            cuiPrintText(szBuffer, TRUE);
+        }
+    }
+
+    cuiPrintText(TEXT("Ldr: exit"), TRUE);
     InterlockedDecrement((PLONG)&g_lApplicationInstances);
     ExitProcess(0);
 }

@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2018
+*  (C) COPYRIGHT AUTHORS, 2014 - 2019
 *
 *  TITLE:       SUP.H
 *
-*  VERSION:     1.90
+*  VERSION:     1.100
 *
-*  DATE:        11 Jan 2018
+*  DATE:        04 Jan 2019
 *
 *  Common header file for the program support routines.
 *
@@ -18,22 +18,20 @@
 *******************************************************************************/
 
 BOOL supEnablePrivilege(
-	_In_ DWORD	PrivilegeName,
-	_In_ BOOL	fEnable
-	);
+    _In_ DWORD	PrivilegeName,
+    _In_ BOOL	fEnable);
 
 VOID supPurgeSystemCache(
-	VOID
-	);
+    VOID);
 
 PVOID supGetSystemInfo(
-	_In_ SYSTEM_INFORMATION_CLASS InfoClass
-	);
+    _In_ SYSTEM_INFORMATION_CLASS InfoClass);
 
 BOOL supProcessExist(
-	_In_ LPWSTR lpProcessName
-	);
+    _In_ LPWSTR lpProcessName);
 
 BOOL supLoadDeviceDriver(
-    VOID
-);
+    VOID);
+
+BOOL supRestartVBoxDrv(
+    _Out_ PULONG lastErrorValue);

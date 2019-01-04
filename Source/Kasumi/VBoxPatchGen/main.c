@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2017 - 2018
+*  (C) COPYRIGHT AUTHORS, 2017 - 2019
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     1.10
+*  VERSION:     1.20
 *
-*  DATE:        11 Jan 2017
+*  DATE:        04 Jan 2019
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -17,14 +17,9 @@
 
 #include "global.h"
 
-HANDLE  g_ConOut = NULL;
-BOOL    g_ConsoleOutput = FALSE;
-WCHAR   BE = 0xFEFF;
-
-#define T_PROGRAMTITLE      L"VirtualBox Patch Generator v1.1.0.1801"
+#define T_PROGRAMTITLE      L"VirtualBox Patch Generator v1.2.0.1901"
 #define T_FILEINFAIL        L"\r\nVPG: Error while processing input file"
 #define T_FILEOUTFAIL       L"\r\nVPG: Error while processing output file"
-#define T_PRESSANYKEY       L"\r\nVPG: Press Enter to exit"
 
 #define MAX_HWID_BLOCKS_DEEP   32
 #define MAX_PATCH_BLOCKS       256
@@ -77,9 +72,9 @@ PVOID FindPattern(
 *
 */
 BOOL SaveTable(
-    BINARY_PATCH_BLOCK_INTERNAL *PatchBlock,
-    LPWSTR OutputFileName,
-    UINT BlockCount
+    _In_ BINARY_PATCH_BLOCK_INTERNAL *PatchBlock,
+    _In_ LPWSTR OutputFileName,
+    _In_ UINT BlockCount
 )
 {
     UINT    i;
@@ -87,7 +82,7 @@ BOOL SaveTable(
     PUCHAR  Table = NULL;
     SIZE_T  TableSize = 0;
     HANDLE  hFile = INVALID_HANDLE_VALUE;
-    DWORD   ProcessedSize, dwEntrySize;
+    DWORD   dwEntrySize, ProcessedSize;
     TCHAR   szOutputFileName[MAX_PATH * 2];
 
     TableSize = BlockCount * sizeof(BINARY_PATCH_BLOCK_INTERNAL);
@@ -96,7 +91,7 @@ BOOL SaveTable(
         ProcessedSize = 0;
         for (i = 0; i < BlockCount; i++) {
             dwEntrySize = sizeof(ULONG) + sizeof(UCHAR) + (sizeof(UCHAR) * PatchBlock[i].DataLength);
-            if (ProcessedSize + dwEntrySize > TableSize)
+            if (ProcessedSize + dwEntrySize > (DWORD)TableSize)
                 break;
             RtlCopyMemory(&Table[ProcessedSize], &PatchBlock[i], dwEntrySize);
             ProcessedSize += dwEntrySize;
@@ -130,7 +125,7 @@ BOOL SaveTable(
 *
 */
 UINT ProcessInputFile(
-    LPTSTR lpszPath
+    _In_ LPWSTR lpszPath
 )
 {
     UINT                uResult = (UINT)-1;
@@ -154,7 +149,7 @@ UINT ProcessInputFile(
         rlen = 0;
         RtlSecureZeroMemory(InputFile, sizeof(InputFile));
         GetCommandLineParam(lpszPath, 1, InputFile, MAX_PATH, &rlen);
-        if (rlen == 0) 
+        if (rlen == 0)
             break;
 
         if (GetFileAttributes(InputFile) == (DWORD)-1)
@@ -194,9 +189,7 @@ UINT ProcessInputFile(
         c = 0;
 
         //locate VBOX patterns
-        cuiPrintText(g_ConOut,
-            TEXT("\r\nPattern matching: 'VBOX'\r\n"),
-            g_ConsoleOutput, TRUE);
+        cuiPrintText(TEXT("\r\nPattern matching: 'VBOX'\r\n"), TRUE);
 
         //
         // FACP
@@ -216,7 +209,7 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern FACP not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // RSDT
@@ -236,7 +229,7 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern RSDT not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // XSDT
@@ -256,7 +249,7 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern XSDT not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // APIC
@@ -276,7 +269,7 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern APIC not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // HPET
@@ -296,7 +289,7 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern HPET not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // MCFG
@@ -316,7 +309,7 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern MCFG not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // VBOXCPU
@@ -336,7 +329,7 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern VBOXCPU not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // VBOX 1.0 CDROM
@@ -356,7 +349,7 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern VBOXCDROM not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);   */
+        cuiPrintText(LogBuffer, TRUE);   */
 
         //
         // VBOX generic
@@ -376,12 +369,10 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern VBOX generic not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //locate VirtualBox pattern
-        cuiPrintText(g_ConOut,
-            TEXT("\r\nPattern matching: 'VirtualBox'\r\n"),
-            g_ConsoleOutput, TRUE);
+        cuiPrintText(TEXT("\r\nPattern matching: 'VirtualBox'\r\n"), TRUE);
 
         //
         // 'VirtualBox'
@@ -401,7 +392,7 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern VirtualBox not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // 'VirtualBox__'
@@ -421,7 +412,7 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern VirtualBox__ not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // 'VirtualBox GIM'
@@ -441,7 +432,7 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tVirtualBox GIM pattern not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // 'VirtualBox VMM'
@@ -461,12 +452,10 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern VirtualBox VMM not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //locate Configuration pattern
-        cuiPrintText(g_ConOut,
-            TEXT("\r\nPattern matching: Configuration\r\n"),
-            g_ConsoleOutput, TRUE);
+        cuiPrintText(TEXT("\r\nPattern matching: Configuration\r\n"), TRUE);
 
         RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
         Pattern = FindPattern(
@@ -483,38 +472,36 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern Configuration not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         //
         // HWID
         //
-        cuiPrintText(g_ConOut,
-            TEXT("\r\nPattern matching: Hardware ID\r\n"),
-            g_ConsoleOutput, TRUE);
+        cuiPrintText(TEXT("\r\nPattern matching: Hardware ID\r\n"), TRUE);
 
         //
         // 80EE
         //
+
+        RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
         d = 0;
         Pattern = DllBase;
         do {
             Pattern = FindPattern(
                 (CONST PBYTE)Pattern, DllVirtualSize - (Pattern - DllBase),
                 (CONST PBYTE)PCI80EE_PATTERN, sizeof(PCI80EE_PATTERN));
-            if (Pattern) {  
+            if (Pattern) {
                 DataBlocks[c].VirtualOffset = (ULONG)(1 + Pattern - DllBase);
                 DataBlocks[c].DataLength = sizeof(HWID_PATCH_VIDEO_1);
                 RtlCopyMemory(DataBlocks[c].Data, HWID_PATCH_VIDEO_1, DataBlocks[c].DataLength);
                 RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
                 _strcpy(LogBuffer, TEXT("80EE\t\t0x"));
                 ultohex((ULONG)DataBlocks[c].VirtualOffset, _strend(LogBuffer));
-                cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+                cuiPrintText(LogBuffer, TRUE);
                 c += 1;
                 d += 1;
                 if (d > MAX_HWID_BLOCKS_DEEP) {
-                    cuiPrintText(g_ConOut,
-                        TEXT("\r\nVPG: Maximum hwid blocks deep, abort scan.\r\n"),
-                        g_ConsoleOutput, TRUE);
+                    cuiPrintText(TEXT("\r\nVPG: Maximum hwid blocks deep, abort scan.\r\n"), TRUE);
                     break;
                 }
             }
@@ -527,22 +514,33 @@ UINT ProcessInputFile(
         //
         // BEEF
         //
-        RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
-        Pattern = FindPattern(
-            (CONST PBYTE)DllBase, DllVirtualSize,
-            (CONST PBYTE)PCIBEEF_PATTERN, sizeof(PCIBEEF_PATTERN));
-        if (Pattern) {
-            DataBlocks[c].VirtualOffset = (ULONG)(1 + Pattern - DllBase);
-            DataBlocks[c].DataLength = sizeof(HWID_PATCH_VIDEO_2);
-            RtlCopyMemory(DataBlocks[c].Data, HWID_PATCH_VIDEO_2, DataBlocks[c].DataLength);
-            _strcpy(LogBuffer, TEXT("BEEF\t\t0x"));
-            ultohex((ULONG)DataBlocks[c].VirtualOffset, _strend(LogBuffer));
-            c += 1;
-        }
-        else {
-            _strcpy(LogBuffer, TEXT("\tPattern BEEF not found"));
-        }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+
+        d = 0;
+        Pattern = DllBase;
+        do {
+            Pattern = FindPattern(
+                (CONST PBYTE)Pattern, DllVirtualSize - (Pattern - DllBase),
+                (CONST PBYTE)PCIBEEF_PATTERN, sizeof(PCIBEEF_PATTERN));
+            if (Pattern) {
+                DataBlocks[c].VirtualOffset = (ULONG)(1 + Pattern - DllBase);
+                DataBlocks[c].DataLength = sizeof(HWID_PATCH_VIDEO_2);
+                RtlCopyMemory(DataBlocks[c].Data, HWID_PATCH_VIDEO_2, DataBlocks[c].DataLength);
+                RtlSecureZeroMemory(LogBuffer, sizeof(LogBuffer));
+                _strcpy(LogBuffer, TEXT("BEEF\t\t0x"));
+                ultohex((ULONG)DataBlocks[c].VirtualOffset, _strend(LogBuffer));
+                cuiPrintText(LogBuffer, TRUE);
+                c += 1;
+                d += 1;
+                if (d > MAX_HWID_BLOCKS_DEEP) {
+                    cuiPrintText(TEXT("\r\nVPG: Maximum hwid blocks deep, abort scan.\r\n"), TRUE);
+                    break;
+                }
+            }
+            else {
+                break;
+            }
+            Pattern++;
+        } while (DllVirtualSize - (Pattern - DllBase) > 0);
 
         //
         // CAFE
@@ -562,7 +560,7 @@ UINT ProcessInputFile(
         else {
             _strcpy(LogBuffer, TEXT("\tPattern CAFE not found"));
         }
-        cuiPrintText(g_ConOut, LogBuffer, g_ConsoleOutput, TRUE);
+        cuiPrintText(LogBuffer, TRUE);
 
         if (SaveTable(DataBlocks, TEXT("\\output.bin"), c))
             uResult = 0;
@@ -602,65 +600,39 @@ void KasumiMain(
     VOID
 )
 {
-    BOOL         cond = FALSE;
-    UINT         uResult = 0;
-    DWORD        dwTemp;
-    HANDLE       StdIn;
-    INPUT_RECORD inp1;
+    BOOL cond = FALSE;
+    UINT uResult = 0;
 
     __security_init_cookie();
 
     do {
 
-        g_ConOut = GetStdHandle(STD_OUTPUT_HANDLE);
-        if (g_ConOut == INVALID_HANDLE_VALUE) {
-            break;
-        }
-
-        g_ConsoleOutput = TRUE;
-        if (!GetConsoleMode(g_ConOut, &dwTemp)) {
-            g_ConsoleOutput = FALSE;
-        }
+        cuiInitialize(FALSE, NULL);
 
         SetConsoleTitle(T_PROGRAMTITLE);
-        SetConsoleMode(g_ConOut, ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_OUTPUT);
-        if (g_ConsoleOutput == FALSE) {
-            WriteFile(g_ConOut, &BE, sizeof(WCHAR), &dwTemp, NULL);
-        }
 
-        cuiPrintText(g_ConOut, T_PROGRAMTITLE, g_ConsoleOutput, TRUE);
+        cuiPrintText(T_PROGRAMTITLE, TRUE);
 
         uResult = ProcessInputFile(GetCommandLine());
 
         switch (uResult) {
 
         case (UINT)-2:
-            cuiPrintText(g_ConOut, T_FILEOUTFAIL, g_ConsoleOutput, TRUE);
+            cuiPrintText(T_FILEOUTFAIL, TRUE);
 
         case (UINT)-1:
-            cuiPrintText(g_ConOut, TEXT("\r\nInput file not found"), g_ConsoleOutput, TRUE);
+            cuiPrintText(TEXT("\r\nInput file not found"), TRUE);
             break;
 
         case 0: //success
-            cuiPrintText(g_ConOut, TEXT("\r\nOutput file generated"), g_ConsoleOutput, TRUE);
+            cuiPrintText(TEXT("\r\nOutput file generated"), TRUE);
             break;
 
         default:
-            cuiPrintText(g_ConOut, T_FILEINFAIL, g_ConsoleOutput, FALSE);
+            cuiPrintText(T_FILEINFAIL, FALSE);
             break;
         }
-        
-        if (g_ConsoleOutput) {
 
-            cuiPrintText(g_ConOut, T_PRESSANYKEY, g_ConsoleOutput, FALSE);            
-
-            StdIn = GetStdHandle(STD_INPUT_HANDLE);
-            if (StdIn != INVALID_HANDLE_VALUE) {
-                RtlSecureZeroMemory(&inp1, sizeof(inp1));
-                ReadConsoleInput(StdIn, &inp1, 1, &dwTemp);
-                ReadConsole(StdIn, &BE, sizeof(BE), &dwTemp, NULL);
-            }
-        }
     } while (cond);
 
     ExitProcess(0);

@@ -14,13 +14,18 @@ https://github.com/hfiref0x/VBoxHardenedLoader/blob/master/Binary/install_signed
 
 x64 Windows 7/8/8.1/10;
 
-VirtualBox 5.2.4, 5.2.12, 5.2.18.
+VirtualBox 6.0.0 and later versions.
 
-For version below VirtualBox 5.0 use older release of this loader.
+For version below VirtualBox 6.0 please use older release of this loader.
 
-For versions 5.0.0, 5.0.2, 5.0.8, 5.0.10, 5.0.12 please use loader version 1.5.
++ For versions 5.2.x use loader version 1.9.0 
+(https://github.com/hfiref0x/VBoxHardenedLoader/releases/tag/v1.9.0)
 
-For versions 5.1.x use loader version 1.8.0 or 1.8.2
++ For versions 5.1.x use loader version 1.8.0 or 1.8.2
+(https://github.com/hfiref0x/VBoxHardenedLoader/releases/tag/v1.8.2)
+
++ For versions 5.0.0, 5.0.2, 5.0.8, 5.0.10, 5.0.12 use loader version 1.7.1
+(https://github.com/hfiref0x/VBoxHardenedLoader/releases/tag/v1.7.1)
 
 Loader designed only for x64 Windows.
 
@@ -28,6 +33,9 @@ Administrative privilege is required.
 
 # Warning
 Binary files (ACPI tables, BIOS roms), batch scripts from loader version 1.9+ are NOT compatible with VirtualBox 5.1 and below.
+
+# Oracle bug warning for VirtualBox 6.0.0
+VirtualBox version 6.0.0 contain a bug that causes any EFI enabled guest to show black screen with any type of virtual display adapter other than VBoxVGA which is _not default_ setting (except the case when VM is created for old OS variants). If you want set the EFI option for guest, you should also go to Display settings and change video adapter type to VBoxVGA manually.
 
 # Installation and use
 
@@ -42,8 +50,18 @@ For singed loader version
 
 Project comes with full source code.
 In order to build from source you need:
-Microsoft Visual Studio 2013 U4 and/or Visual Studio 2015 U2 and later versions for loader build.
-Windows Driver Kit 8.1 U1 and later versions for driver build.
+1) Microsoft Visual Studio 2013 U4 and/or Visual Studio 2015/2017 for loader build.
+2) Windows Driver Kit 8.1 U1 and later versions for driver build.
+
+## Instructions
+
+* Select Platform ToolSet first for project in solution you want to build (Project->Properties->General): 
+  * v120 for Visual Studio 2013;
+  * v140 for Visual Studio 2015; 
+  * v141 for Visual Studio 2017.
+* For v140 and above set Target Platform Version (Project->Properties->General):
+  * If v140 then select 8.1 (Note that Windows 8.1 SDK must be installed);
+  * If v141 then select 10.0.17763.0 (Note that Windows 10.0.17763 SDK must be installed). 
 
 
 # Project Contents
@@ -77,4 +95,4 @@ https://github.com/hfiref0x/VBoxHardenedLoader/blob/master/Binary/linux.md
 
 # Authors
 
-(c) 2014 - 2018 VBoxHardenedLoader Project
+(c) 2014 - 2019 VBoxHardenedLoader Project

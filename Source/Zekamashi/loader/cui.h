@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2016
+*  (C) COPYRIGHT AUTHORS, 2016 - 2018
 *
 *  TITLE:       CUI.H
 *
-*  VERSION:     1.00
+*  VERSION:     1.30
 *
-*  DATE:        18 Jan 2016
+*  DATE:        01 Aug 2018
 *
 *  Common header file for console ui.
 *
@@ -18,9 +18,38 @@
 *******************************************************************************/
 #pragma once
 
-VOID cuiPrintText(
-	_In_ HANDLE hOutConsole,
+VOID cuiInitialize(
+    _In_ BOOL InitInput,
+    _Out_opt_ PBOOL IsConsoleOutput
+    );
+
+#ifdef _UNICODE
+#define cuiPrintText cuiPrintTextW
+#define cuiPrintTextLastError cuiPrintTextLastErrorW
+#else
+#define cuiPrintText cuiPrintTextA
+#define cuiPrintTextLastError cuiPrintTextLastErrorA
+#endif
+
+
+VOID cuiPrintTextA(
+    _In_ LPSTR lpText,
+    _In_ BOOL UseReturn
+    );
+
+VOID cuiPrintTextW(
 	_In_ LPWSTR lpText,
-	_In_ BOOL ConsoleOutputEnabled,
 	_In_ BOOL UseReturn
 	);
+
+VOID cuiPrintTextLastErrorA(
+    _In_ BOOL UseReturn
+    );
+
+VOID cuiPrintTextLastErrorW(
+    _In_ BOOL UseReturn
+    );
+
+VOID cuiClrScr(
+    VOID
+    );

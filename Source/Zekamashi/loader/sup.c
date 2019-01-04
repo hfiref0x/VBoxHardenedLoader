@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2018
+*  (C) COPYRIGHT AUTHORS, 2014 - 2019
 *
 *  TITLE:       SUP.C
 *
-*  VERSION:     1.90
+*  VERSION:     1.100
 *
-*  DATE:        11 Jan 2018
+*  DATE:        04 Jan 2019
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -62,6 +62,7 @@ BOOL supEnablePrivilege(
 )
 {
     BOOL bResult = FALSE;
+    ULONG dummy;
     NTSTATUS status;
     HANDLE hToken;
     TOKEN_PRIVILEGES TokenPrivileges;
@@ -80,7 +81,7 @@ BOOL supEnablePrivilege(
     TokenPrivileges.Privileges[0].Luid.HighPart = 0;
     TokenPrivileges.Privileges[0].Attributes = (fEnable) ? SE_PRIVILEGE_ENABLED : 0;
     status = NtAdjustPrivilegesToken(hToken, FALSE, &TokenPrivileges,
-        sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, NULL);
+        sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, &dummy);
     if (status == STATUS_NOT_ALL_ASSIGNED) {
         status = STATUS_PRIVILEGE_NOT_HELD;
     }
@@ -251,7 +252,7 @@ BOOL supLoadDeviceDriver(
 
             _strcpy(szLog, TEXT("Ldr: Loading Tsugumi Monitor -> "));
             _strcat(szLog, szFile);
-            cuiPrintText(g_ConOut, szLog, g_ConsoleOutput, TRUE);
+            cuiPrintText(szLog, TRUE);
 
             scmInstallDriver(schSCManager, TSUGUMI_DISP_NAME, szFile);
             bResult = scmStartDriver(schSCManager, TSUGUMI_DISP_NAME);
@@ -264,3 +265,85 @@ BOOL supLoadDeviceDriver(
 
     return bResult;
 }
+
+/*
+* supRestartVBoxDrv
+*
+* Purpose:
+*
+* Start VBoxDrv if stopped.
+*
+*/
+BOOL supRestartVBoxDrv(
+    _Out_ PULONG lastErrorValue
+)
+{
+    BOOL bResult = FALSE;
+    SC_HANDLE Manager;
+    SC_HANDLE Service;
+
+    SERVICE_STATUS_PROCESS Status;
+    ULONG dummy, lasterror;
+
+    //
+    // Assume failure.
+    //
+    if (lastErrorValue)
+        *lastErrorValue = ERROR_UNHANDLED_ERROR;
+
+    Manager = OpenSCManager(
+        NULL,
+        NULL,
+        SC_MANAGER_ALL_ACCESS);
+
+    if (Manager) {
+
+        Service = OpenService(
+            Manager,
+            TEXT("VBoxDrv"),
+            SERVICE_ALL_ACCESS);
+
+        if (Service) {
+
+            if (QueryServiceStatusEx(
+                Service,
+                SC_STATUS_PROCESS_INFO,
+                (LPBYTE)&Status,
+                sizeof(Status),
+                &dummy))
+            {
+                if (Status.dwCurrentState == SERVICE_STOPPED) {
+
+                    bResult = StartService(Service, 0, NULL);
+                    lasterror = GetLastError();
+
+                }
+                else {
+                    //
+                    // Driver already running or in pending state, nothing to do.
+                    //
+                    bResult = TRUE;
+                    lasterror = ERROR_SUCCESS;
+                }
+            }
+            else {
+                if (lastErrorValue)
+                    *lastErrorValue = GetLastError();
+            }
+
+            CloseServiceHandle(Service);
+        }
+        else {
+            if (lastErrorValue)
+                *lastErrorValue = GetLastError();
+        }
+        CloseServiceHandle(Manager);
+    }
+    else {
+        if (lastErrorValue)
+            *lastErrorValue = GetLastError();
+    }
+
+    return bResult;
+}
+
