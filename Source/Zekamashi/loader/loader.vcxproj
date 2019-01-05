@@ -142,10 +142,12 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <CompileAs>CompileAsC</CompileAs>
-      <DisableSpecificWarnings>4996;28252;28253</DisableSpecificWarnings>
+      <DisableSpecificWarnings>
+      </DisableSpecificWarnings>
       <SDLCheck>true</SDLCheck>
       <EnablePREfast>true</EnablePREfast>
       <ControlFlowGuard>Guard</ControlFlowGuard>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -157,6 +159,9 @@
       <GenerateMapFile>true</GenerateMapFile>
       <EntryPointSymbol>VBoxLdrMain</EntryPointSymbol>
       <SetChecksum>true</SetChecksum>
+      <AdditionalOptions>/NOCOFFGRPINFO %(AdditionalOptions)</AdditionalOptions>
+      <LinkTimeCodeGeneration>
+      </LinkTimeCodeGeneration>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>oscompat.manifest</AdditionalManifestFiles>
@@ -181,6 +186,7 @@
       <EnablePREfast>true</EnablePREfast>
       <ControlFlowGuard>Guard</ControlFlowGuard>
       <PreprocessorDefinitions>_SIGNED_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -192,7 +198,9 @@
       <GenerateMapFile>true</GenerateMapFile>
       <EntryPointSymbol>VBoxLdrMain</EntryPointSymbol>
       <SetChecksum>true</SetChecksum>
-      <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/INTEGRITYCHECK /NOCOFFGRPINFO %(AdditionalOptions)</AdditionalOptions>
+      <LinkTimeCodeGeneration>
+      </LinkTimeCodeGeneration>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>oscompat.manifest</AdditionalManifestFiles>
@@ -220,6 +228,7 @@
       <EnablePREfast>true</EnablePREfast>
       <ControlFlowGuard>Guard</ControlFlowGuard>
       <PreprocessorDefinitions>_SIGNED_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -231,6 +240,9 @@
       <GenerateMapFile>true</GenerateMapFile>
       <EntryPointSymbol>VBoxLdrMain</EntryPointSymbol>
       <SetChecksum>true</SetChecksum>
+      <AdditionalOptions>/NOCOFFGRPINFO %(AdditionalOptions)</AdditionalOptions>
+      <LinkTimeCodeGeneration>
+      </LinkTimeCodeGeneration>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>oscompat.manifest</AdditionalManifestFiles>
