@@ -343,6 +343,7 @@ void VBoxLdrMain(
 
             if (_strcmpi(szBuffer, TEXT("/?")) == 0) {
                 cuiPrintText(T_HELP, TRUE);
+                InterlockedDecrement((PLONG)&g_lApplicationInstances);
                 ExitProcess(0);
                 break;
             }
