@@ -165,11 +165,27 @@ to start and stop monitoring driver respectively. The "sc" tool will work too.
 
 ### Appendix B: Using EFI VM
 
+There are two ways to set your patched/custom EFI ROM for EFI VM.
+
+##### 1. Replace VBoxEFI64.fd with patched
 During Step 3. 
 
 * Make backup copy of original `VBoxEFI64.fd` in VirtualBox directory somewhere;
 * Replace `VBoxEFI64.fd` in VirtualBox directory with it patched version from VBoxLdr\data directory. Select proper version of file and then rename it to `VBoxEFI64.fd` (e.g. you have installed 5.1.18 then select `VBoxEFI64_5.1.18.fd`);
 * Use hidevm_efiahci (AHCI controller mode) or hidevm_efiide (IDE controller mode) for your EFI VM.
+
+##### 2. Use vboxmanage setextradata
+It is the simple way, without any file replacing:
+* Configure VM to use alternative EFI ROM with help of VBoxManage.
+
+*vboxmanage setextradata vmname "VBoxInternal/Devices/efi/0/Config/EfiRom" full_path_to_your_patched_efirom*
+
+e.g. *vboxmanage setextradata vm01 "VBoxInternal/Devices/efi/0/Config/EfiRom" C:\VM\PinkiPie.fd*
+
+To automate this you can add the following string to EFI vm configuration scripts
+*%vboxman% setextradata "%1" "VBoxInternal/Devices/efi/0/Config/EfiRom" full_path_to_your_patched_efirom*
+
+Note that some VirtualBox versions might not support this.
 
 ### Appendix C: Uninstalling VirtualBox loader
 
