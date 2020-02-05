@@ -1,0 +1,3 @@
+# Support and donations
+
+VBoxHardenedLoader is Free Software and is made available free of charge. Your donation, which is purely optional, supports project development and maintaining. If you like the software, you can consider donation which you can do anonymously using the following BTC address: 3DU68VrwZYHVSYXenQMG123utkYrFGms3b

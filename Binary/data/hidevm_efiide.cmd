@@ -1,12 +1,15 @@
 rem @echo off
 
 rem EFI/IDE mode
+rem This script is for use with VBoxHardenedLoader v2+
 
 rem vboxman is the full path to the vboxmanage executable
 rem vmscfgdir is the path to directory that keeps vbox custom configuration data (bioses, tables etc)
 
 set vboxman="C:\Program Files\Oracle\VirtualBox\vboxmanage.exe"
 set vmscfgdir=D:\Virtual\VBOX\Settings\
+
+%vboxman% setextradata "%1" "VBoxInternal/CPUM/EnableHVP" 0
 
 %vboxman% setextradata "%1" "VBoxInternal/Devices/efi/0/Config/DmiBIOSVendor" "Apple Inc."
 %vboxman% setextradata "%1" "VBoxInternal/Devices/efi/0/Config/DmiBIOSVersion" "MB52.88Z.0088.B05.0904162222"
@@ -62,7 +65,7 @@ set vmscfgdir=D:\Virtual\VBOX\Settings\
 cd /d %vmscfgdir%
 
 %vboxman% setextradata "%1" "VBoxInternal/Devices/acpi/0/Config/DsdtFilePath" "%vmscfgdir%ACPI-DSDT.bin"
-%vboxman% setextradata "%1" "VBoxInternal/Devices/acpi/0/Config/SsdtFilePath" "%vmscfgdir%ACPI-SSDT1.bin"
-%vboxman% setextradata "%1" "VBoxInternal/Devices/vga/0/Config/BiosRom" "%vmscfgdir%videorom.bin"
-
+%vboxman% setextradata "%1" "VBoxInternal/Devices/acpi/0/Config/SsdtFilePath" "%vmscfgdir%ACPI-SSDT.bin"
+%vboxman% setextradata "%1" "VBoxInternal/Devices/vga/0/Config/BiosRom" "%vmscfgdir%vgabios386.bin"
+%vboxman% setextradata "%1" "VBoxInternal/Devices/efi/0/Config/EfiRom" "%vmscfgdir%efi_amd64_fixed_6.1.2.fd"
 @pause

@@ -1,1 +1,0 @@
-https://github.com/hfiref0x/VBoxHardenedLoader/blob/master/Binary/linux.md
