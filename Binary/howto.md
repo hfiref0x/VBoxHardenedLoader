@@ -40,7 +40,7 @@ Setup Virtual disk
 
 <img src="https://raw.githubusercontent.com/hfiref0x/VBoxHardenedLoader/master/Binary/help/3_createhdd.png" />
 
-Note: 32 Gb is not requirement and just used as example, however yet again some lame malware attempt to detect VM by hard disk size, so give it reasonable size (>32 Gb).
+Note: 64 Gb is not requirement and just used as example, however yet again some lame malware attempt to detect VM by hard disk size, so give it reasonable size (>32 Gb).
 
 After VM (vm0 is our case) created, open it setting and do some changes.
 
