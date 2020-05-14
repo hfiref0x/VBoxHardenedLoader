@@ -5,14 +5,14 @@
 # System Requirements
 
 + x64 Windows 7/8/8.1/10;
-+ VirtualBox 6.1.2 and later versions;
++ VirtualBox 6.1.6 and later versions;
 + Administrative privilege is required.
 
 WARNING: This loader is incompatible with any VirtualBox below 6.1.2.
 
-For version below VirtualBox 6.1.2 please use older release of this loader.
+For version below VirtualBox 6.1.6 please use older release of this loader.
 
-More about key changes in loader version 2.0 you can read here https://swapcontext.blogspot.com/2020/02/vboxhardenedloader-v2.html
+More about key changes in loader version 2 you can read here https://swapcontext.blogspot.com/2020/02/vboxhardenedloader-v2.html
 
 + For versions 6.0.x use loader version 1.10.0
 (https://github.com/hfiref0x/VBoxHardenedLoader/releases/tag/v1.10.0)

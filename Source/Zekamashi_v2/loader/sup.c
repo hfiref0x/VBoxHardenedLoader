@@ -4,9 +4,9 @@
 *
 *  TITLE:       SUP.C
 *
-*  VERSION:     2.00
+*  VERSION:     2.01
 *
-*  DATE:        24 Jan 2020
+*  DATE:        02 May 2020
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -1094,7 +1094,7 @@ BOOL supQueryObjectFromHandle(
 BOOL supGetCommandLineOption(
     _In_ LPCTSTR OptionName,
     _In_ BOOL IsParametric,
-    _Out_writes_opt_z_(ValueSize) LPTSTR OptionValue,
+    _Inout_opt_ LPTSTR OptionValue,
     _In_ ULONG ValueSize
 )
 {
@@ -1154,12 +1154,15 @@ BOOLEAN supQueryHVCIState(
         hvciEnabled = ((CodeIntegrity.CodeIntegrityOptions & CODEINTEGRITY_OPTION_ENABLED) &&
             (CodeIntegrity.CodeIntegrityOptions & CODEINTEGRITY_OPTION_HVCI_KMCI_ENABLED));
 
-        *pbHVCIEnabled = hvciEnabled;
+        if (pbHVCIEnabled)
+            *pbHVCIEnabled = hvciEnabled;
 
-        *pbHVCIStrictMode = hvciEnabled &&
+        if (pbHVCIStrictMode)
+            *pbHVCIStrictMode = hvciEnabled &&
             (CodeIntegrity.CodeIntegrityOptions & CODEINTEGRITY_OPTION_HVCI_KMCI_STRICTMODE_ENABLED);
 
-        *pbHVCIIUMEnabled = (CodeIntegrity.CodeIntegrityOptions & CODEINTEGRITY_OPTION_HVCI_IUM_ENABLED) > 0;
+        if (pbHVCIIUMEnabled)
+            *pbHVCIIUMEnabled = (CodeIntegrity.CodeIntegrityOptions & CODEINTEGRITY_OPTION_HVCI_IUM_ENABLED) > 0;
 
         return TRUE;
     }
@@ -1493,4 +1496,55 @@ PVOID supGetTokenInfo(
     }
 
     return Buffer;
+}
+
+/*
+* supGetImageVersionInfo
+*
+* Purpose:
+*
+* Return version numbers from version info.
+*
+*/
+BOOL supGetImageVersionInfo(
+    _In_ PWSTR lpFileName,
+    _In_ PSUP_VERINFO_NUMBERS VersionNumbers
+)
+{
+    BOOL bResult = FALSE;
+    DWORD dwHandle, dwSize, dwError = ERROR_SUCCESS;
+    PVOID vinfo = NULL;
+    UINT Length;
+    VS_FIXEDFILEINFO* pFileInfo;
+
+    dwHandle = 0;
+    dwSize = GetFileVersionInfoSize(lpFileName, &dwHandle);
+    if (dwSize) {
+        vinfo = supHeapAlloc(dwSize);
+        if (vinfo) {
+            if (GetFileVersionInfoEx(0, lpFileName, 0, dwSize, vinfo)) {
+                bResult = VerQueryValue(vinfo, TEXT("\\"), (LPVOID*)&pFileInfo, (PUINT)&Length);
+                if (bResult) {
+                    VersionNumbers->VersionMS = pFileInfo->dwFileVersionMS;
+                    VersionNumbers->VersionLS = pFileInfo->dwFileVersionLS;
+                }
+                else {
+                    dwError = GetLastError();
+                }
+            }
+            else {
+                dwError = GetLastError();
+            }
+            supHeapFree(vinfo);
+        }
+        else {
+            dwError = GetLastError();
+        }
+    }
+    else {
+        dwError = GetLastError();
+    }
+
+    SetLastError(dwError);
+    return bResult;
 }

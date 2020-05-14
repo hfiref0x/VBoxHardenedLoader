@@ -4,9 +4,9 @@
 *
 *  TITLE:       MAIN.C
 *
-*  VERSION:     2.00
+*  VERSION:     2.01
 *
-*  DATE:        24 Jan 2020
+*  DATE:        10 May 2020
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -21,7 +21,7 @@
 volatile LONG           g_lApplicationInstances = 0;
 #pragma data_seg()
 
-#define T_PROGRAMTITLE  "VirtualBox Hardened Loader v2.0.0.2002"
+#define T_PROGRAMTITLE  "VirtualBox Hardened Loader v2.0.1.2005"
 
 ULONG_PTR               g_MaximumUserModeAddress = 0;
 
@@ -306,12 +306,18 @@ BOOLEAN AssignPrivileges(
             printf_s("[!] Abort: SeDebugPrivilege is not assigned! NTSTATUS (0x%lX)\r\n", ntStatus);
             return FALSE;
         }
+        else {
+            printf_s("LDR: SeDebugPrivilege assigned\r\n");
+        }
     }
 
     ntStatus = supEnablePrivilege(SE_LOAD_DRIVER_PRIVILEGE, TRUE);
     if (!NT_SUCCESS(ntStatus)) {
         printf_s("[!] Abort: SeLoadDriverPrivilege is not assigned! NTSTATUS (0x%lX)\r\n", ntStatus);
         return FALSE;
+    }
+    else {
+        printf_s("LDR: SeLoadDriverPrivilege assigned\r\n");
     }
 
     return TRUE;
@@ -427,6 +433,9 @@ int VBoxLdrMain(
             //
             // Custom table.
             //
+
+            RtlSecureZeroMemory(szParameter, sizeof(szParameter));
+
             if (supGetCommandLineOption(TEXT("/c"),
                 TRUE,
                 szParameter,

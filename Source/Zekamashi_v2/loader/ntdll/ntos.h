@@ -5,9 +5,9 @@
 *
 *  TITLE:       NTOS.H
 *
-*  VERSION:     1.127
+*  VERSION:     1.134
 *
-*  DATE:        04 Feb 2020
+*  DATE:        08 May 2020
 *
 *  Common header file for the ntos API functions and definitions.
 *
@@ -88,6 +88,7 @@ typedef ULONGLONG REGHANDLE, *PREGHANDLE;
 typedef PVOID *PDEVICE_MAP;
 typedef PVOID PHEAD;
 typedef struct _IO_TIMER* PIO_TIMER;
+typedef LARGE_INTEGER PHYSICAL_ADDRESS;
 
 #ifndef _WIN32_WINNT_WIN10
 #define _WIN32_WINNT_WIN10 0x0A00
@@ -204,15 +205,17 @@ char _RTL_CONSTANT_STRING_type_check(const void *s);
 //
 // Valid values for the OBJECT_ATTRIBUTES.Attributes field
 //
-#define OBJ_INHERIT             0x00000002L
-#define OBJ_PERMANENT           0x00000010L
-#define OBJ_EXCLUSIVE           0x00000020L
-#define OBJ_CASE_INSENSITIVE    0x00000040L
-#define OBJ_OPENIF              0x00000080L
-#define OBJ_OPENLINK            0x00000100L
-#define OBJ_KERNEL_HANDLE       0x00000200L
-#define OBJ_FORCE_ACCESS_CHECK  0x00000400L
-#define OBJ_VALID_ATTRIBUTES    0x000007F2L
+#define OBJ_INHERIT                         0x00000002L
+#define OBJ_PERMANENT                       0x00000010L
+#define OBJ_EXCLUSIVE                       0x00000020L
+#define OBJ_CASE_INSENSITIVE                0x00000040L
+#define OBJ_OPENIF                          0x00000080L
+#define OBJ_OPENLINK                        0x00000100L
+#define OBJ_KERNEL_HANDLE                   0x00000200L
+#define OBJ_FORCE_ACCESS_CHECK              0x00000400L
+#define OBJ_IGNORE_IMPERSONATED_DEVICEMAP   0x00000800L
+#define OBJ_DONT_REPARSE                    0x00001000L
+#define OBJ_VALID_ATTRIBUTES                0x00001FF2L
 
 //
 // Callback Object Rights
@@ -363,7 +366,8 @@ char _RTL_CONSTANT_STRING_type_check(const void *s);
 #define TRACELOG_CREATE_ONDISK        0x0040
 #define TRACELOG_GUID_ENABLE          0x0080
 #define TRACELOG_ACCESS_KERNEL_LOGGER 0x0100
-#define TRACELOG_CREATE_INPROC        0x0200
+#define TRACELOG_LOG_EVENT            0x0200 // used on Vista and greater
+#define TRACELOG_CREATE_INPROC        0x0200 // used pre-Vista
 #define TRACELOG_ACCESS_REALTIME      0x0400
 #define TRACELOG_REGISTER_GUIDS       0x0800
 #define TRACELOG_JOIN_GROUP           0x1000
@@ -493,6 +497,31 @@ typedef struct _IO_STATUS_BLOCK {
 
     ULONG_PTR Information;
 } IO_STATUS_BLOCK, *PIO_STATUS_BLOCK;
+
+#ifndef INTERFACE_TYPE
+typedef enum _INTERFACE_TYPE {
+    InterfaceTypeUndefined = -1,
+    Internal,
+    Isa,
+    Eisa,
+    MicroChannel,
+    TurboChannel,
+    PCIBus,
+    VMEBus,
+    NuBus,
+    PCMCIABus,
+    CBus,
+    MPIBus,
+    MPSABus,
+    ProcessorInternal,
+    InternalPowerBus,
+    PNPISABus,
+    PNPBus,
+    Vmcs,
+    ACPIBus,
+    MaximumInterfaceType
+} INTERFACE_TYPE, * PINTERFACE_TYPE;
+#endif
 
 /*
 ** FileCache and MemoryList START
@@ -1528,8 +1557,12 @@ typedef enum _SYSTEM_INFORMATION_CLASS {
     SystemFlags2Information = 207,
     SystemSecurityModelInformation = 208,
     SystemCodeIntegritySyntheticCacheInformation = 209,
+    SystemFeatureConfigurationInformation = 210,
+    SystemFeatureConfigurationSectionInformation = 211,
+    SystemFeatureUsageSubscriptionInformation = 212,
+    SystemSecureSpeculationControlInformation = 213,
     MaxSystemInfoClass
-} SYSTEM_INFORMATION_CLASS, *PSYSTEM_INFORMATION_CLASS;
+} SYSTEM_INFORMATION_CLASS, * PSYSTEM_INFORMATION_CLASS;
 
 //msdn.microsoft.com/en-us/library/windows/desktop/ms724509(v=vs.85).aspx
 typedef struct _SYSTEM_SPECULATION_CONTROL_INFORMATION {
@@ -4215,6 +4248,41 @@ typedef enum _LDR_DLL_LOAD_REASON {
 ** Callbacks START
 */
 
+typedef VOID(NTAPI* PEX_HOST_NOTIFICATION) (
+    _In_ ULONG NotificationType,
+    _In_opt_ PVOID Context);
+
+typedef struct _EX_EXTENSION_INFORMATION {
+    USHORT Id;
+    USHORT Version;
+    USHORT FunctionCount;
+} EX_EXTENSION_INFORMATION, * PEX_EXTENSION_INFORMATION;
+
+typedef struct _EX_HOST_PARAMS {
+    EX_EXTENSION_INFORMATION HostInformation;
+    POOL_TYPE PoolType;
+    PVOID HostTable;
+    PVOID NotificationRoutine;
+    PVOID NotificationContext;
+} EX_HOST_PARAMS, * PEX_HOST_PARAMS;
+
+typedef struct _EX_HOST_ENTRY {
+    LIST_ENTRY ListEntry;
+    LONG RefCounter;
+    EX_HOST_PARAMS HostParameters;
+    EX_RUNDOWN_REF RundownProtection;
+    EX_PUSH_LOCK PushLock;
+    PVOID FunctionTable; //callbacks
+    ULONG Flags;
+} EX_HOST_ENTRY, * PEX_HOST_ENTRY;
+
+typedef struct _EX_EXTENSION_REGISTRATION {
+    EX_EXTENSION_INFORMATION Information;
+    PVOID FunctionTable;
+    PVOID* HostTable;
+    PDRIVER_OBJECT DriverObject;
+} EX_EXTENSION_REGISTRATION, * PEX_EXTENSION_REGISTRATION;
+
 typedef struct _EX_CALLBACK {
     EX_FAST_REF RoutineBlock;
 } EX_CALLBACK, *PEX_CALLBACK;
@@ -6192,8 +6260,8 @@ NTSYSAPI
 VOID
 NTAPI
 RtlInitString(
-    _Inout_ PSTRING DestinationString,
-    _In_ PCSZ SourceString);
+    _Out_ PSTRING DestinationString,
+    _In_opt_ PCSZ SourceString);
 
 NTSYSAPI
 VOID
@@ -6267,26 +6335,6 @@ RtlPrefixUnicodeString(
     _In_ PCUNICODE_STRING String1,
     _In_ PCUNICODE_STRING String2,
     _In_ BOOLEAN CaseInSensitive);
-
-NTSYSAPI
-NTSTATUS
-NTAPI
-RtlExpandEnvironmentStrings(
-    _In_opt_ PVOID Environment,
-    _In_reads_(SrcLength) PWSTR Src,
-    _In_ SIZE_T SrcLength,
-    _Out_writes_opt_(DstLength) PWSTR Dst,
-    _In_ SIZE_T DstLength,
-    _Out_opt_ PSIZE_T ReturnLength);
-
-NTSYSAPI
-NTSTATUS
-NTAPI
-RtlExpandEnvironmentStrings_U(
-    _In_opt_ PVOID Environment,
-    _In_ PCUNICODE_STRING Source,
-    _Out_ PUNICODE_STRING Destination,
-    _Out_opt_ PULONG ReturnedLength);
 
 NTSYSAPI
 NTSTATUS
@@ -6690,6 +6738,26 @@ RtlCreateEnvironmentEx(
 NTSYSAPI
 NTSTATUS
 NTAPI
+RtlExpandEnvironmentStrings(
+    _In_opt_ PVOID Environment,
+    _In_reads_(SrcLength) PWSTR Src,
+    _In_ SIZE_T SrcLength,
+    _Out_writes_opt_(DstLength) PWSTR Dst,
+    _In_ SIZE_T DstLength,
+    _Out_opt_ PSIZE_T ReturnLength);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+RtlExpandEnvironmentStrings_U(
+    _In_opt_ PVOID Environment,
+    _In_ PCUNICODE_STRING Source,
+    _Out_ PUNICODE_STRING Destination,
+    _Out_opt_ PULONG ReturnedLength);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
 RtlSetCurrentEnvironment(
     _In_ PVOID Environment,
     _Out_opt_ PVOID *PreviousEnvironment);
@@ -6701,6 +6769,14 @@ RtlQueryEnvironmentVariable_U(
     _In_opt_ PVOID Environment,
     _In_ PUNICODE_STRING Name,
     _Out_ PUNICODE_STRING Value);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+RtlSetEnvironmentVariable(
+    _Inout_opt_ PVOID* Environment,
+    _In_ PUNICODE_STRING Name,
+    _In_opt_ PUNICODE_STRING Value);
 
 NTSYSAPI
 NTSTATUS
@@ -6988,6 +7064,118 @@ RtlGetSaclSecurityDescriptor(
 NTSYSAPI
 NTSTATUS
 NTAPI
+RtlCreateSecurityDescriptor(
+    _In_ PSECURITY_DESCRIPTOR SecurityDescriptor,
+    _In_ ULONG Revision);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+RtlSetOwnerSecurityDescriptor(
+    _In_ PSECURITY_DESCRIPTOR SecurityDescriptor,
+    _In_ PSID Owner,
+    _In_ BOOLEAN OwnerDefaulted);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+RtlCopySecurityDescriptor(
+    _In_ PSECURITY_DESCRIPTOR InputSecurityDescriptor,
+    _Out_ PSECURITY_DESCRIPTOR* OutputSecurityDescriptor);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+RtlMakeSelfRelativeSD(
+    _In_ PSECURITY_DESCRIPTOR AbsoluteSecurityDescriptor,
+    _Out_writes_bytes_(*BufferLength) PSECURITY_DESCRIPTOR SelfRelativeSecurityDescriptor,
+    _Inout_ PULONG BufferLength);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+RtlAbsoluteToSelfRelativeSD(
+    _In_ PSECURITY_DESCRIPTOR AbsoluteSecurityDescriptor,
+    _Out_writes_bytes_to_opt_(*BufferLength, *BufferLength) PSECURITY_DESCRIPTOR SelfRelativeSecurityDescriptor,
+    _Inout_ PULONG BufferLength);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+RtlSelfRelativeToAbsoluteSD(
+    _In_ PSECURITY_DESCRIPTOR SelfRelativeSecurityDescriptor,
+    _Out_writes_bytes_to_opt_(*AbsoluteSecurityDescriptorSize, *AbsoluteSecurityDescriptorSize) PSECURITY_DESCRIPTOR AbsoluteSecurityDescriptor,
+    _Inout_ PULONG AbsoluteSecurityDescriptorSize,
+    _Out_writes_bytes_to_opt_(*DaclSize, *DaclSize) PACL Dacl,
+    _Inout_ PULONG DaclSize,
+    _Out_writes_bytes_to_opt_(*SaclSize, *SaclSize) PACL Sacl,
+    _Inout_ PULONG SaclSize,
+    _Out_writes_bytes_to_opt_(*OwnerSize, *OwnerSize) PSID Owner,
+    _Inout_ PULONG OwnerSize,
+    _Out_writes_bytes_to_opt_(*PrimaryGroupSize, *PrimaryGroupSize) PSID PrimaryGroup,
+    _Inout_ PULONG PrimaryGroupSize);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+RtlSetDaclSecurityDescriptor(
+    _Inout_ PSECURITY_DESCRIPTOR SecurityDescriptor,
+    _In_ BOOLEAN DaclPresent,
+    _In_opt_ PACL Dacl,
+    _In_opt_ BOOLEAN DaclDefaulted);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+RtlGetDaclSecurityDescriptor(
+    _In_ PSECURITY_DESCRIPTOR SecurityDescriptor,
+    _Out_ PBOOLEAN DaclPresent,
+    _Out_ PACL* Dacl,
+    _Out_ PBOOLEAN DaclDefaulted);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+RtlSetSaclSecurityDescriptor(
+    _Inout_ PSECURITY_DESCRIPTOR SecurityDescriptor,
+    _In_ BOOLEAN SaclPresent,
+    _In_opt_ PACL Sacl,
+    _In_opt_ BOOLEAN SaclDefaulted);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+RtlGetSaclSecurityDescriptor(
+    _In_ PSECURITY_DESCRIPTOR SecurityDescriptor,
+    _Out_ PBOOLEAN SaclPresent,
+    _Out_ PACL* Sacl,
+    _Out_ PBOOLEAN SaclDefaulted);
+
+NTSYSAPI
+ULONG
+NTAPI
+RtlLengthSecurityDescriptor(
+    _In_ PSECURITY_DESCRIPTOR SecurityDescriptor);
+
+_Check_return_
+NTSYSAPI
+BOOLEAN
+NTAPI
+RtlValidSecurityDescriptor(
+    _In_ PSECURITY_DESCRIPTOR SecurityDescriptor);
+
+_Check_return_
+NTSYSAPI
+BOOLEAN
+NTAPI
+RtlValidRelativeSecurityDescriptor(
+    _In_reads_bytes_(SecurityDescriptorLength) PSECURITY_DESCRIPTOR SecurityDescriptorInput,
+    _In_ ULONG SecurityDescriptorLength,
+    _In_ SECURITY_INFORMATION RequiredInformation);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
 RtlCreateAcl(
     _Out_writes_bytes_(AclLength) PACL Acl,
     _In_ ULONG AclLength,
@@ -7177,23 +7365,24 @@ RtlAddMandatoryAce(
     _In_ ACCESS_MASK AccessMask);
 
 NTSYSAPI
+PVOID
+NTAPI
+RtlFindAceByType(
+    _In_ PACL pAcl,
+    _In_ UCHAR AceType,
+    _Out_opt_ PULONG pIndex);
+
+NTSYSAPI
+BOOLEAN
+NTAPI
+RtlOwnerAcesPresent(
+    _In_ PACL pAcl);
+
+NTSYSAPI
 NTSTATUS
 NTAPI
 RtlDefaultNpAcl(
     _Out_ PACL *Acl);
-
-NTSYSAPI
-ULONG
-NTAPI
-RtlLengthSecurityDescriptor(
-    _In_ PSECURITY_DESCRIPTOR SecurityDescriptor);
-
-NTSYSAPI
-VOID
-NTAPI
-RtlMapGenericMask(
-    _In_ PACCESS_MASK AccessMask,
-    _In_ PGENERIC_MAPPING GenericMapping);
 
 NTSYSAPI
 BOOLEAN
@@ -7319,28 +7508,6 @@ RtlCreateServiceSid(
     _Out_writes_bytes_opt_(*ServiceSidLength) PSID ServiceSid,
     _Inout_ PULONG ServiceSidLength);
 
-NTSYSAPI
-NTSTATUS
-NTAPI
-RtlCreateSecurityDescriptor(
-    _In_ PSECURITY_DESCRIPTOR SecurityDescriptor,
-    _In_ ULONG Revision);
-
-NTSYSAPI
-NTSTATUS
-NTAPI
-RtlSetOwnerSecurityDescriptor(
-    _In_ PSECURITY_DESCRIPTOR SecurityDescriptor,
-    _In_ PSID Owner,
-    _In_ BOOLEAN OwnerDefaulted);
-
-NTSYSAPI
-NTSTATUS
-NTAPI
-RtlCopySecurityDescriptor(
-    _In_ PSECURITY_DESCRIPTOR InputSecurityDescriptor,
-    _Out_ PSECURITY_DESCRIPTOR *OutputSecurityDescriptor);
-
 FORCEINLINE 
 LUID 
 NTAPI 
@@ -7399,6 +7566,33 @@ RtlAdjustPrivilege(
     _In_ BOOLEAN Enable,
     _In_ BOOLEAN Client,
     _Out_ PBOOLEAN WasEnabled);
+
+NTSYSAPI
+BOOLEAN
+NTAPI
+RtlAreAllAccessesGranted(
+    _In_ ACCESS_MASK GrantedAccess,
+    _In_ ACCESS_MASK DesiredAccess);
+
+NTSYSAPI
+BOOLEAN
+NTAPI
+RtlAreAnyAccessesGranted(
+    _In_ ACCESS_MASK GrantedAccess,
+    _In_ ACCESS_MASK DesiredAccess);
+
+NTSYSAPI
+VOID
+NTAPI
+RtlMapGenericMask(
+    _In_ PACCESS_MASK AccessMask,
+    _In_ PGENERIC_MAPPING GenericMapping);
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+RtlImpersonateSelf(
+    _In_ SECURITY_IMPERSONATION_LEVEL ImpersonationLevel);
 
 /************************************************************************************
 *

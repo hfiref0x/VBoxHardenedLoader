@@ -46,7 +46,7 @@ After VM (vm0 is our case) created, open it setting and do some changes.
 
 #### System
 
-On "Motherboard" tab ensure Enable I/O API is turned on. If you plan to use EFI please read Appendix A: Using EFI VM.
+On "Motherboard" tab ensure Enable I/O APIC is turned on. If you plan to use EFI please read Appendix A: Using EFI VM.
 
 <img src="https://raw.githubusercontent.com/hfiref0x/VBoxHardenedLoader/master/Binary/help/4_settings_mb.png" />
 
