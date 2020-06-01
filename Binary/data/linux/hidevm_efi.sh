@@ -48,7 +48,7 @@ vboxmanage setextradata "$1" "VBoxInternal/Devices/efi/0/Config/EfiRom" "/home/u
 
 vboxmanage modifyvm "$1" --paravirtprovider legacy
 vboxmanage modifyvm "$1" --chipset ich9
-vboxmanage modifyvm "$1" --macaddress1 2B49443BC482
+vboxmanage modifyvm "$1" --macaddress1 2C49443BC482
 vboxmanage modifyvm "$1" --hwvirtex on
 vboxmanage modifyvm "$1" --vtxvpid on
 vboxmanage modifyvm "$1" --vtxux on
