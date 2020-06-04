@@ -4,9 +4,9 @@
 *
 *  TITLE:       SUP.C
 *
-*  VERSION:     2.01
+*  VERSION:     2.02
 *
-*  DATE:        02 May 2020
+*  DATE:        04 June 2020
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -15,6 +15,14 @@
 *
 *******************************************************************************/
 #include "global.h"
+
+#define ENABLE_ERROR_LOGGING 1
+
+#ifdef ENABLE_ERROR_LOGGING
+#define printError(...) printf(__VA_ARGS__)
+#else
+#define printError(...) 
+#endif
 
 /*
 * supHeapAlloc
@@ -388,6 +396,7 @@ NTSTATUS supxCreateDriverEntry(
             NULL,
             NULL))
         {
+            printError("[!] %s, RtlDosPathNameToNtPathName_U failed\r\n", __FUNCTION__);
             return STATUS_INVALID_PARAMETER_2;
         }
     }
@@ -403,6 +412,7 @@ NTSTATUS supxCreateDriverEntry(
         NULL))
     {
         status = STATUS_ACCESS_DENIED;
+        printError("[!] %s, RegCreateKeyEx failed with error %lu\r\n", __FUNCTION__, GetLastError());
         goto Cleanup;
     }
 
@@ -417,8 +427,10 @@ NTSTATUS supxCreateDriverEntry(
             REG_DWORD,
             (BYTE*)&dwData,
             sizeof(dwData));
-        if (dwResult != ERROR_SUCCESS)
+        if (dwResult != ERROR_SUCCESS) {
+            printError("[!] %s, RegSetValueEx(ErrorControl) failed with error %lu\r\n", __FUNCTION__, GetLastError());
             break;
+        }
 
         dwData = SERVICE_KERNEL_DRIVER;
         dwResult = RegSetValueEx(keyHandle,
@@ -427,8 +439,10 @@ NTSTATUS supxCreateDriverEntry(
             REG_DWORD,
             (BYTE*)&dwData,
             sizeof(dwData));
-        if (dwResult != ERROR_SUCCESS)
+        if (dwResult != ERROR_SUCCESS) {
+            printError("[!] %s, RegSetValueEx(Type) failed with error %lu\r\n", __FUNCTION__, GetLastError());
             break;
+        }
 
         dwData = SERVICE_DEMAND_START;
         dwResult = RegSetValueEx(keyHandle,
@@ -438,8 +452,10 @@ NTSTATUS supxCreateDriverEntry(
             (BYTE*)&dwData,
             sizeof(dwData));
 
-        if (dwResult != ERROR_SUCCESS)
+        if (dwResult != ERROR_SUCCESS) {
+            printError("[!] %s, RegSetValueEx(Start) failed with error %lu\r\n", __FUNCTION__, GetLastError());
             break;
+        }
 
         if (DriverPath) {
             dwResult = RegSetValueEx(keyHandle,
@@ -448,6 +464,9 @@ NTSTATUS supxCreateDriverEntry(
                 REG_EXPAND_SZ,
                 (BYTE*)driverImagePath.Buffer,
                 (DWORD)driverImagePath.Length + sizeof(UNICODE_NULL));
+            if (dwResult != ERROR_SUCCESS) {
+                printError("[!] %s, RegSetValueEx(ImagePath) failed with error %lu\r\n", __FUNCTION__, GetLastError());
+            }
         }
 
     } while (FALSE);
@@ -455,6 +474,7 @@ NTSTATUS supxCreateDriverEntry(
     RegCloseKey(keyHandle);
 
     if (dwResult != ERROR_SUCCESS) {
+        printError("[!] %s, dwError %lu\r\n", __FUNCTION__, dwResult);
         status = STATUS_ACCESS_DENIED;
     }
     else
@@ -508,6 +528,7 @@ NTSTATUS supLoadDriver(
         NT_REG_PREP,
         DriverName)))
     {
+        printError("[!] Error building driver registry key name\r\n");
         return STATUS_INVALID_PARAMETER_1;
     }
 
