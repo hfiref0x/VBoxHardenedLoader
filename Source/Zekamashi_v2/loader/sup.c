@@ -6,7 +6,7 @@
 *
 *  VERSION:     2.02
 *
-*  DATE:        04 June 2020
+*  DATE:        19 June 2020
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -535,11 +535,15 @@ NTSTATUS supLoadDriver(
     status = supxCreateDriverEntry(DriverPath,
         &szBuffer[keyOffset]);
 
-    if (!NT_SUCCESS(status))
+    if (!NT_SUCCESS(status)) {
+        printError("[!] Error building driver registry entry, NTSTATUS (0x%lX)\r\n", status);
         return status;
+    }
 
     RtlInitUnicodeString(&driverServiceName, szBuffer);
     status = NtLoadDriver(&driverServiceName);
+
+    printf("LDR: NtLoadDriver, NTSTATUS (0x%lX)\r\n", status);
 
     if (UnloadPreviousInstance) {
         if ((status == STATUS_IMAGE_ALREADY_LOADED) ||
