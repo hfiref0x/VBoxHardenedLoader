@@ -118,7 +118,7 @@ Note the backslash at the end of vmscfgdir.
 
 After that save script changes.
 
-Type it in comand line prompt and add your VM name as parameter, e.g. in our case: 
+Type it in command line prompt and add your VM name as parameter, e.g. in our case: 
 
 <img src="https://raw.githubusercontent.com/hfiref0x/VBoxHardenedLoader/master/Binary/help/10_script.png" />
 
