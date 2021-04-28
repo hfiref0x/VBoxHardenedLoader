@@ -48,6 +48,8 @@ After VM (vm0 is our case) created, open it setting and do some changes.
 
 On "Motherboard" tab ensure Enable I/O APIC is turned on. If you plan to use EFI please read Appendix A: Using EFI VM.
 
+On "Motherboard" tab also ensure that the Pointing Device is set to PS/2 Mouse.
+
 <img src="https://raw.githubusercontent.com/hfiref0x/VBoxHardenedLoader/master/Binary/help/4_settings_mb.png" />
 
 On "Processor" tab ensure PAE/NX enabled. Also note that your VM must have at least TWO CPUs because again number of processors used by malware to determinate VM execution. So give VM at minimum two processors.
@@ -60,7 +62,7 @@ On "Acceleration" tab set Paravirtualization Interface to "Legacy" and enable VT
 
 #### Display
 
-On "Screen" tab disable 3D/2D Acceleration.
+On "Screen" tab disable 3D/2D Acceleration and set the Graphics Controller to VMSVGA.
 
 <img src="https://raw.githubusercontent.com/hfiref0x/VBoxHardenedLoader/master/Binary/help/7_display.png" />
 
