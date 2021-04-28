@@ -48,7 +48,7 @@ After VM (vm0 is our case) created, open it setting and do some changes.
 
 On "Motherboard" tab ensure Enable I/O APIC is turned on. If you plan to use EFI please read Appendix A: Using EFI VM.
 
-On "Motherboard" tab also ensure that the Pointing Device is set to PS/2 Mouse.
+On "Motherboard" tab also ensure that the Pointing Device is set to PS/2 Mouse. You may want to disable "Enhance pointer precision" in Windows Mouse settings as it will make it work much better.
 
 <img src="https://raw.githubusercontent.com/hfiref0x/VBoxHardenedLoader/master/Binary/help/4_settings_mb.png" />
 
