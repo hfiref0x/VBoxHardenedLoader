@@ -64,6 +64,8 @@ set /p VM="Input Name of VM: "
 %vboxman% modifyvm "%VM%" --hpet on
 %vboxman% modifyvm "%VM%" --nestedpaging on
 %vboxman% modifyvm "%VM%" --largepages on
+%vboxman% modifyvm "%VM%" --graphicscontroller vmsvga
+%vboxman% modifyvm "%VM%" --mouse ps2
 
 cd /d %vmscfgdir%
 %vboxman% setextradata "%VM%" "VBoxInternal/Devices/acpi/0/Config/DsdtFilePath" "%vmscfgdir%ACPI-DSDT.bin"
