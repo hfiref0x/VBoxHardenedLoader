@@ -58,3 +58,5 @@ vboxmanage modifyvm "$1" --longmode on
 vboxmanage modifyvm "$1" --hpet on
 vboxmanage modifyvm "$1" --nestedpaging on
 vboxmanage modifyvm "$1" --largepages on
+vboxmanage modifyvm "$1" --graphicscontroller vmsvga
+vboxmanage modifyvm "$1" --mouse ps2
