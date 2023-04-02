@@ -9,7 +9,7 @@ This project is no longer maintained since mid of 2020. Reasons are multiple:
 
 From now on switch to something else or fork and update this loader.
 The features that need to be updated are:
-1. Since Windows 11 "some update" Microsoft blocked Intel Nal driver which this loader is using to load it own driver (Tsugumi). **You will have to replace Intel Nal driver with something that works** (for example some provider from https://github/hfiref0x/kdu)
+1. Since Windows 11 "some update" Microsoft blocked Intel Nal driver which this loader is using to load it own driver (Tsugumi). **You will have to replace Intel Nal driver with something that works** (for example some provider from https://github.com/hfiref0x/kdu)
 2. VBox ACPI tables, offsets and EFI VGA module patch weren't updated since mid 2020 - **you will have to fix it**.
 
 # System Requirements
