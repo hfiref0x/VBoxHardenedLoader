@@ -2,6 +2,16 @@
 # VirtualBox Hardened Loader
 ## VirtualBox Hardened VM detection mitigation loader
 
+## Note about archivation from 02 Apr 2023.
+This project is no longer maintained since mid of 2020. Reasons are multiple:
+1. Authors switched to another virtual environment and no longer need of use this bugged Oracle product.
+2. For years of existence 2014-2020 a little of public contribution were made but a huge amount of PROFIT were made by these who used this loader for purposes this loader wasn't made (incluing ridiculous re-brands/game cheating etc). We are okay with it if you are contributing to source you are making profit from. None of them did this.
+
+From now on switch to something else or fork and update this loader.
+The features that need to be updated are:
+1. Since Windows 11 "some update" Microsoft blocked Intel Nal driver which this loader is using to load it own driver (Tsugumi). **You will have to replace Intel Nal driver with something that works** (for example some provider from https://github/hfiref0x/kdu)
+2. VBox ACPI tables, offsets and EFI VGA module patch weren't updated since mid 2020 - **you will have to fix it**.
+
 # System Requirements
 
 + x64 Windows 7/8/8.1/10;
